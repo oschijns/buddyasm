@@ -1,0 +1,15 @@
+[package]
+name = "buddyasm_translator"
+description = "Convert some assembly syntaxes into customasm"
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+
+# Recognize directives and instructions
+regex = "1.12"

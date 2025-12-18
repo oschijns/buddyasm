@@ -1,0 +1,15 @@
+[package]
+name = "buddyasm_srcgen"
+description = "Generate customasm sources from data"
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+
+# Generate identifiers
+convert_case = "0.10"

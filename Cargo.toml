@@ -1,0 +1,15 @@
+[workspace]
+members = ["srcgen", "tileset", "translator"]
+resolver = "2"
+
+[workspace.package]
+description = "Companion libraries for customasm"
+authors = ["Olivier Schyns <https://github.com/oschijns>"]
+repository = "https://github.com/oschijns/buddyasm"
+keywords = ["asm"]
+categories = ["asm"]
+version = "0.0.1"
+edition = "2024"
+license = "MIT"
+
+[workspace.dependencies]

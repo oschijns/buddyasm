@@ -1,0 +1,25 @@
+[package]
+name = "buddyasm_tileset"
+description = "Read images and convert them into optimized tilesets for retro consoles"
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+
+# Process matrix data
+ndarray = { version = "0.17", features = ["rayon"] }
+
+# Serialize the data into a contiguous sequence
+bitfield = "0.19"
+bitvec = "1.0"
+
+# Load regular image formats
+image = { version = "0.25", features = ["bmp", "png"] }
+
+# Load Aseprite file
+asefile = "0.3"
