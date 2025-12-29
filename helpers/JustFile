@@ -1,0 +1,5 @@
+# Build rules
+
+# Generate a file describing the generated binary
+test_6502:
+    customasm mos6502/test.asm -f annotated,base:16,group:4,addr_base:16,labels:true -o mos6502/test.debug

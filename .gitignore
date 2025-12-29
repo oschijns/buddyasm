@@ -1,1 +1,5 @@
+# Ignore Rust's target directory
 /target
+
+# Ignore CustomAsm tests
+**/*.debug
