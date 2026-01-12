@@ -1,6 +1,65 @@
-use super::*;
 use crate::tileset::TileSet;
 use bitvec::{order::BitOrder, store::BitStore, vec::BitVec};
+
+/// Define a serialization strategy for the tileset
+pub trait SerialInner<T, O>
+where
+    T: BitStore,
+    O: BitOrder,
+{
+    fn serialize(&self, tileset: &TileSet) -> BitVec<T, O>;
+}
+
+/// Serialize the tileset where one pixel corresponds to one bit
+pub struct SerialMono;
+
+/// Serialize the tileset linearly
+pub struct SerialLinear {
+    /// How many bits are used to define a pixel
+    bits_per_pixel: usize,
+}
+
+/// Serialize the tileset as distinct bitplanes
+pub struct SerialSplit {
+    /// How many bits are used to define a pixel
+    bits_per_pixel: usize,
+}
+
+/// Serialize the tileset by intertwining rows by rows
+pub struct SerialRowIntertwine {
+    /// How many bits are used to define a pixel
+    bits_per_pixel: usize,
+
+    /// Define how many rows are intertwined
+    intertwined_rows: usize,
+}
+
+impl SerialLinear {
+    /// Define linear layout serialization
+    #[inline]
+    pub fn new(bits_per_pixel: usize) -> Self {
+        Self { bits_per_pixel }
+    }
+}
+
+impl SerialSplit {
+    /// Define splitted bitplane layout serialization
+    #[inline]
+    pub fn new(bits_per_pixel: usize) -> Self {
+        Self { bits_per_pixel }
+    }
+}
+
+impl SerialRowIntertwine {
+    /// Define intertwined rows layout serialization
+    #[inline]
+    pub fn new(bits_per_pixel: usize, intertwined_rows: usize) -> Self {
+        Self {
+            bits_per_pixel,
+            intertwined_rows,
+        }
+    }
+}
 
 impl<T, O> SerialInner<T, O> for SerialMono
 where
