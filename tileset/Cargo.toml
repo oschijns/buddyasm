@@ -11,8 +11,15 @@ license.workspace = true
 
 [dependencies]
 
+# Report errors when loading images
+thiserror.workspace = true
+
+# Serialize & deserialize data
+serde.workspace = true
+
 # Process matrix data
 ndarray = { version = "0.17", features = ["rayon"] }
+itertools = "0.14"
 
 # Serialize the data into a contiguous sequence
 bitfield = "0.19"

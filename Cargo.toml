@@ -13,3 +13,9 @@ edition = "2024"
 license = "MIT"
 
 [workspace.dependencies]
+
+# Report errors
+thiserror = "2.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
