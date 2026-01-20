@@ -14,7 +14,7 @@ use std::rc::Rc;
 pub type Pix = u8;
 
 /// Tile to serialize in a given binary layout
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Tile(Rc<Array2<Pix>>);
 
 /// Tileset containing tiles

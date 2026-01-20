@@ -1,9 +1,10 @@
 use super::{Flip, IndexMap, IndexTile, PaletteSet, Pix, Tile, TileSet, to_index};
+use core::{fmt, ops::Deref};
 use image::{EncodableLayout, GenericImageView, ImageBuffer, Pixel};
 use itertools::Itertools;
 use ndarray::Array2;
 use serde::Deserialize;
-use std::{fmt, ops::Deref, usize};
+use std::collections::HashMap;
 
 #[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
@@ -49,52 +50,86 @@ pub struct TileMapBuilder {
     /// Configuration of this builder
     config: BuilderConfig,
 
-    /// Tiles to generate
-    tiles: Vec<Option<Tile>>,
+    /// For a given index, keep track of the tile associated with it
+    index_to_tile: HashMap<usize, Tile>,
+
+    /// For a given tile, keep track of the associated index
+    tile_to_index: HashMap<Tile, (usize, Flip)>,
+
+    /// Keep track of the slots that are still vacant
+    vacancy: Vec<bool>,
 }
 
 impl TileMapBuilder {
     /// Create a builder with the provided config
     #[inline]
     pub fn new(config: BuilderConfig) -> Self {
-        let mut tiles = Vec::with_capacity(config.tile_count);
-        tiles.resize(config.tile_count, None);
-        Self { config, tiles }
+        let capacity = config.tile_count;
+        let mut vacancy = Vec::with_capacity(capacity);
+        vacancy.resize(capacity, true);
+        Self {
+            config,
+            index_to_tile: HashMap::with_capacity(capacity),
+            tile_to_index: HashMap::with_capacity(capacity),
+            vacancy,
+        }
     }
 
     /// Store a given tile at the specified index in the tileset
+    /// This method assume the tile is in its default orientation
     #[inline]
     pub fn set_tile(&mut self, index: usize, tile: Tile) {
-        self.tiles[index] = Some(tile);
+        let flip_h = self.config.flip_horizontal;
+        let flip_v = self.config.flip_vertical;
+
+        // Associate the index with the provided tile
+        self.index_to_tile.insert(index, tile.clone());
+
+        // Make it a bidirectional relationship
+        self.tile_to_index.insert(tile.clone(), (index, Flip::None));
+        if flip_h {
+            self.tile_to_index
+                .insert(tile.flip_horizontal(), (index, Flip::Horizontal));
+        }
+        if flip_v {
+            self.tile_to_index
+                .insert(tile.flip_vertical(), (index, Flip::Vertical));
+        }
+        if flip_h && flip_v {
+            self.tile_to_index
+                .insert(tile.flip_both(), (index, Flip::Both));
+        }
+
+        // The slot is no longer vacant
+        self.vacancy[index] = false;
+    }
+
+    /// Get the list of vacant slots in the tileset
+    pub fn get_vacant_slots(&self) -> Vec<usize> {
+        let count = self.config.tile_count;
+
+        // Check that all the tiles have been set
+        let mut undef = Vec::with_capacity(count);
+        for (index, &vacant) in self.vacancy.iter().enumerate() {
+            if vacant {
+                undef.push(index);
+            }
+        }
+        undef
     }
 
     /// Complete the tileset to be usable
-    pub fn complete(&self) -> Result<TileSet, Vec<usize>> {
-        // Unwrap the options to get a filled tileset
-        let mut tileset = Vec::with_capacity(self.config.tile_count);
-
-        // Report missing tiles by index
-        let mut undef = Vec::new();
-
-        // Default empty tile to add to the tileset
+    pub fn complete(&self) -> TileSet {
         let empty = Tile::default();
+        let count = self.config.tile_count;
 
-        // Check that all the tiles have been set
-        for (idx, tile) in self.tiles.iter().enumerate() {
-            if let Some(tile) = tile {
-                tileset.push(tile.clone());
-            } else {
-                tileset.push(empty.clone());
-                undef.push(idx);
-            }
+        // Fill the final tileset
+        let mut tileset = Vec::with_capacity(count);
+        for index in 0..count {
+            let tile = self.index_to_tile.get(&index).unwrap_or(&empty);
+            tileset.push(tile.clone());
         }
-
-        // Check if
-        if undef.is_empty() {
-            Ok(TileSet::new(tileset))
-        } else {
-            Err(undef)
-        }
+        TileSet::new(tileset)
     }
 
     /// Process the given images with the associated palette
@@ -124,7 +159,7 @@ impl TileMapBuilder {
         let mut errors = Vec::<Error>::new();
 
         // Iterate over each tile of the input image
-        'tile: for (tx, ty) in (0..idx_w).cartesian_product(0..idx_h) {
+        for (tx, ty) in (0..idx_w).cartesian_product(0..idx_h) {
             // Define the limits of the tile in pixels
             let pos = TilePos::new(tx * cfg.tile_width, ty * cfg.tile_height);
             let sub_img = img.view(
@@ -140,34 +175,21 @@ impl TileMapBuilder {
                 Ok((pal_idx, tile)) => {
                     // We identified a tile with the corresponding palette.
                     // Now we need to check if said tile already exists in the set.
-                    for (tile_idx, other) in self.tiles.iter().enumerate() {
-                        if let Some(other) = other
-                            && let Some(flip) =
-                                other.similarity(&tile, cfg.flip_horizontal, cfg.flip_vertical)
-                        {
-                            // The two tiles are actually the same.
-                            // Store the corresponding index in the index map.
-                            index_map[to_index(tx, ty)] = IndexTile::new(tile_idx, pal_idx, flip);
-                            continue 'tile;
-                        }
+                    if let Some((tile_idx, flip)) = self.tile_to_index.get(&tile) {
+                        // The tile already exists in the set,
+                        // store the corresponding index in the index map.
+                        index_map[to_index(tx, ty)] = IndexTile::new(*tile_idx, pal_idx, *flip);
+                    } else if let Some((tile_idx, _)) =
+                        self.vacancy.iter().find_position(|&&vacant| vacant)
+                    {
+                        // If we cannot find a matching tile in the set,
+                        // add the new tile to the set at the first available slot.
+                        self.set_tile(tile_idx, tile);
+                        index_map[to_index(tx, ty)] = IndexTile::new(tile_idx, pal_idx, Flip::None);
+                    } else {
+                        // We tried to store the new tile in the set, but there are no more room.
+                        errors.push(Error::TooManyTile(pos));
                     }
-
-                    // We could not find a matching tile in the stack.
-                    // Add the new tile to the set at the first available slot.
-                    for (tile_idx, other) in self.tiles.iter_mut().enumerate() {
-                        if other.is_none() {
-                            // Store the tile at that location
-                            *other = Some(tile);
-
-                            // And store the corresponding index in the index map
-                            index_map[to_index(tx, ty)] =
-                                IndexTile::new(tile_idx, pal_idx, Flip::None);
-                            continue 'tile;
-                        }
-                    }
-
-                    // We tried to store the new tile in the set, but there are no more room.
-                    errors.push(Error::TooManyTile(pos));
                 }
                 Err(_) => {
                     errors.push(Error::NoPaletteMatch(pos));
