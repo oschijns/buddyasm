@@ -6,14 +6,20 @@ use ndarray::Array2;
 use serde::Deserialize;
 use std::collections::HashMap;
 
+/// Error encountered when processing an input image
 #[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Error {
+pub enum TileError {
     #[error("No matching palette for tile at {0}")]
     NoPaletteMatch(TilePos),
 
     #[error("Too many distinct tiles, tile at {0}")]
     TooManyTile(TilePos),
 }
+
+/// Error encountered when trying to find a palette for a given tile
+#[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
+#[error("No matching palette for the tile")]
+pub struct NoPaletteMatchError;
 
 /// Define the position of a tile in an image in pixels coordinates
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -137,7 +143,7 @@ impl TileMapBuilder {
         &mut self,
         img: &ImageBuffer<P, Q>,
         pal: &PaletteSet<P>,
-    ) -> Result<IndexMap, Vec<Error>>
+    ) -> Result<IndexMap, Vec<TileError>>
     where
         P: 'static + Pixel + PartialEq,
         [P::Subpixel]: EncodableLayout,
@@ -156,7 +162,7 @@ impl TileMapBuilder {
         let mut index_map = Array2::<IndexTile>::default(to_index(idx_w, idx_h));
 
         // Push errors into this list
-        let mut errors = Vec::<Error>::new();
+        let mut errors = Vec::<TileError>::new();
 
         // Iterate over each tile of the input image
         for (tx, ty) in (0..idx_w).cartesian_product(0..idx_h) {
@@ -188,11 +194,11 @@ impl TileMapBuilder {
                         index_map[to_index(tx, ty)] = IndexTile::new(tile_idx, pal_idx, Flip::None);
                     } else {
                         // We tried to store the new tile in the set, but there are no more room.
-                        errors.push(Error::TooManyTile(pos));
+                        errors.push(TileError::TooManyTile(pos));
                     }
                 }
                 Err(_) => {
-                    errors.push(Error::NoPaletteMatch(pos));
+                    errors.push(TileError::NoPaletteMatch(pos));
                 }
             }
         }
@@ -213,7 +219,10 @@ where
     /// Check the content of the provided sub image to try to deduce a palette
     /// index and an encoding of the tile. If no palette defined in this set
     /// matches the provided image, return an error.
-    pub fn identify_tile<Q>(&self, img: &ImageBuffer<P, Q>) -> Result<(usize, Tile), ()>
+    pub fn identify_tile<Q>(
+        &self,
+        img: &ImageBuffer<P, Q>,
+    ) -> Result<(usize, Tile), NoPaletteMatchError>
     where
         P: PartialEq,
         [P::Subpixel]: EncodableLayout,
@@ -253,7 +262,7 @@ where
 
         // We've look into each color of the palette selected but could
         // not find a match. We'll try again with the next palette.
-        Err(())
+        Err(NoPaletteMatchError)
     }
 }
 

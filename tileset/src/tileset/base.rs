@@ -1,8 +1,46 @@
-use super::{Flip, Tile};
+use super::{Flip, IndexMap, IndexTile, PaletteSet, Pix, Tile, TileSet};
 use core::hash::{Hash, Hasher};
-use ndarray::Axis;
+use ndarray::{Array2, Axis};
+use std::{path::Path, rc::Rc};
+
+impl TileSet {
+    /// Create a new tileset from raw data
+    #[inline]
+    pub fn new(data: Vec<Tile>) -> Self {
+        Self(Rc::new(data))
+    }
+
+    /// Get the number of tiles in this tileset
+    #[inline]
+    pub fn count(&self) -> usize {
+        self.0.as_ref().len()
+    }
+
+    /// Get the total number of pixels in this tileset.
+    /// This assumes that all tiles stored have the same size.
+    #[inline]
+    pub fn pixel_count(&self) -> usize {
+        if self.0.is_empty() {
+            0
+        } else {
+            self.count() * self.0.as_ref()[0].pixel_count()
+        }
+    }
+}
 
 impl Tile {
+    /// Create a new tile from data
+    #[inline]
+    pub fn new(data: Array2<Pix>) -> Self {
+        Self(Rc::new(data))
+    }
+
+    /// Get the number of pixels in this tile
+    #[inline]
+    pub fn pixel_count(&self) -> usize {
+        self.0.as_ref().len()
+    }
+
     /// Flip the tile horizontally
     #[inline]
     pub fn flip_horizontal(&self) -> Self {
@@ -66,6 +104,16 @@ impl Tile {
     }
 }
 
+impl Hash for Tile {
+    /// Generate a hash from the provided tile data
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.0.hash(state);
+    }
+}
+
 impl Flip {
     /// Return true if the tile is flipped horizontally
     #[inline]
@@ -80,12 +128,30 @@ impl Flip {
     }
 }
 
-impl Hash for Tile {
-    /// Generate a hash from the provided tile data
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: Hasher,
-    {
-        self.0.hash(state);
+impl<C> PaletteSet<C> {
+    /// Create a new palette set
+    #[inline]
+    pub fn new(data: Array2<C>) -> Self {
+        Self(Rc::new(data))
+    }
+}
+
+impl IndexTile {
+    /// Create index data for a tile
+    #[inline]
+    pub fn new(tile: usize, palette: usize, flip: Flip) -> Self {
+        Self {
+            tile,
+            palette,
+            flip,
+        }
+    }
+}
+
+impl IndexMap {
+    /// Create a new index map
+    #[inline]
+    pub fn new(data: Array2<IndexTile>) -> Self {
+        Self(Rc::new(data))
     }
 }

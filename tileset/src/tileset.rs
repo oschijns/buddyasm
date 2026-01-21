@@ -2,11 +2,15 @@
 mod base;
 
 /// Load an input imgae to convert it into a tileset
-mod loader;
+pub mod builder;
+
+/// Load data from files
+mod load;
 
 /// Serialize the tileset
 mod serial;
 
+use image::{Luma, LumaA, Rgb, Rgba};
 use ndarray::{Array2, Ix, Ix2};
 use std::rc::Rc;
 
@@ -24,6 +28,18 @@ pub struct TileSet(Rc<Vec<Tile>>);
 /// Set of palettes to look for in an input image
 #[derive(Debug, Clone)]
 pub struct PaletteSet<C>(Rc<Array2<C>>);
+
+/// RGBA palette set
+pub type PaletteSetRgba = PaletteSet<Rgba<u8>>;
+
+/// RGB palette set
+pub type PaletteSetRgb = PaletteSet<Rgb<u8>>;
+
+/// Grayscale + Alpha palette set
+pub type PaletteSetLumaA = PaletteSet<LumaA<u8>>;
+
+/// Grayscale palette set
+pub type PaletteSetLuma = PaletteSet<Luma<u8>>;
 
 /// Flipping axes
 #[repr(u8)]
@@ -73,72 +89,17 @@ pub struct TileMap<C> {
     indexed_map: IndexMap,
 }
 
-impl Tile {
-    /// Create a new tile from data
-    #[inline]
-    pub fn new(data: Array2<Pix>) -> Self {
-        Self(Rc::new(data))
-    }
+/// RGBA palette set
+pub type TileMapRgba = TileMap<Rgba<u8>>;
 
-    /// Get the number of pixels in this tile
-    #[inline]
-    pub fn pixel_count(&self) -> usize {
-        self.0.as_ref().len()
-    }
-}
+/// RGB palette set
+pub type TileMapRgb = TileMap<Rgb<u8>>;
 
-impl TileSet {
-    /// Create a new tileset from raw data
-    #[inline]
-    pub fn new(data: Vec<Tile>) -> Self {
-        Self(Rc::new(data))
-    }
+/// Grayscale + Alpha palette set
+pub type TileMapLumaA = TileMap<LumaA<u8>>;
 
-    /// Get the number of tiles in this tileset
-    #[inline]
-    pub fn count(&self) -> usize {
-        self.0.as_ref().len()
-    }
-
-    /// Get the total number of pixels in this tileset.
-    /// This assumes that all tiles stored have the same size.
-    #[inline]
-    pub fn pixel_count(&self) -> usize {
-        if self.0.is_empty() {
-            0
-        } else {
-            self.count() * self.0.as_ref()[0].pixel_count()
-        }
-    }
-}
-
-impl<C> PaletteSet<C> {
-    /// Create a new palette set
-    #[inline]
-    pub fn new(data: Array2<C>) -> Self {
-        Self(Rc::new(data))
-    }
-}
-
-impl IndexTile {
-    /// Create index data for a tile
-    #[inline]
-    pub fn new(tile: usize, palette: usize, flip: Flip) -> Self {
-        Self {
-            tile,
-            palette,
-            flip,
-        }
-    }
-}
-
-impl IndexMap {
-    /// Create a new index map
-    #[inline]
-    pub fn new(data: Array2<IndexTile>) -> Self {
-        Self(Rc::new(data))
-    }
-}
+/// Grayscale palette set
+pub type TileMapLuma = TileMap<Luma<u8>>;
 
 /// Convert image coordinates into ndarray coordinates
 #[inline]
