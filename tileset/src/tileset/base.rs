@@ -1,7 +1,7 @@
 use super::{Flip, IndexMap, IndexTile, PaletteSet, Pix, Tile, TileSet};
 use core::hash::{Hash, Hasher};
 use ndarray::{Array2, Axis};
-use std::{path::Path, rc::Rc};
+use std::rc::Rc;
 
 impl TileSet {
     /// Create a new tileset from raw data

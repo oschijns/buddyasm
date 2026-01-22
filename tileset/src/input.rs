@@ -1,6 +1,9 @@
 /// Simple operations
 mod base;
 
+/// Load the input data from files
+mod load;
+
 /// Process a stack
 mod process;
 

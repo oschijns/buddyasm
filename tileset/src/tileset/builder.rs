@@ -1,3 +1,5 @@
+use crate::tileset::Mapping;
+
 use super::{Flip, IndexMap, IndexTile, PaletteSet, Pix, Tile, TileSet, to_index};
 use core::{fmt, ops::Deref};
 use image::{EncodableLayout, GenericImageView, ImageBuffer, Pixel};
@@ -9,11 +11,21 @@ use std::collections::HashMap;
 /// Error encountered when processing an input image
 #[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TileError {
+    /// If no palette match the given tile
     #[error("No matching palette for tile at {0}")]
     NoPaletteMatch(TilePos),
 
-    #[error("Too many distinct tiles, tile at {0}")]
-    TooManyTile(TilePos),
+    /// There are too many different tiles in the provided image
+    #[error("Too many distinct tiles starting at {0}")]
+    DistinctOverflow(TilePos),
+
+    /// The requested tile position is out of the image
+    #[error("Requested tile position {0} is out of bound")]
+    OutOfBound(TilePos),
+
+    /// The given index is out of the boundaries of the target tileset
+    #[error("Given index {0} is out of bound")]
+    InvalidIndex(usize),
 }
 
 /// Error encountered when trying to find a palette for a given tile
@@ -194,7 +206,7 @@ impl TileMapBuilder {
                         index_map[to_index(tx, ty)] = IndexTile::new(tile_idx, pal_idx, Flip::None);
                     } else {
                         // We tried to store the new tile in the set, but there are no more room.
-                        errors.push(TileError::TooManyTile(pos));
+                        errors.push(TileError::DistinctOverflow(pos));
                     }
                 }
                 Err(_) => {
@@ -206,6 +218,76 @@ impl TileMapBuilder {
         // If we encountered errors, return them
         if errors.is_empty() {
             Ok(IndexMap::new(index_map))
+        } else {
+            Err(errors)
+        }
+    }
+
+    /// Process the given images with the associated palette while enforcing
+    /// a target position for each of the tiles.
+    pub fn process_fixed<P, Q>(
+        &mut self,
+        img: &ImageBuffer<P, Q>,
+        pal: &PaletteSet<P>,
+        map: &Mapping,
+    ) -> Result<(), Vec<TileError>>
+    where
+        P: 'static + Pixel + PartialEq,
+        [P::Subpixel]: EncodableLayout,
+        Q: 'static + Deref<Target = [P::Subpixel]>,
+    {
+        let cfg = self.config;
+
+        // Figure out the dimensions of the input image
+        let (img_w, img_h) = img.dimensions();
+
+        // Define the dimensions of the input images in terms of tiles
+        let idx_w = img_w / cfg.tile_width;
+        let idx_h = img_h / cfg.tile_height;
+
+        // Push errors into this list
+        let mut errors = Vec::<TileError>::new();
+
+        // Iterate over the positions provided
+        for (&[tx, ty], &tile_idx) in map.0.iter() {
+            // Check that the requested position is valid
+            // and that the target index is still free.
+            if !self.vacancy[tile_idx] {
+                errors.push(TileError::InvalidIndex(tile_idx));
+                continue;
+            }
+
+            let pos = TilePos::new(tx * cfg.tile_width, ty * cfg.tile_height);
+            if tx >= idx_w || ty >= idx_h {
+                errors.push(TileError::OutOfBound(pos));
+                continue;
+            }
+
+            // Define the limits of the tile in pixels
+            let sub_img = img.view(
+                pos.x,
+                pos.y,
+                pos.x + cfg.tile_width,
+                pos.y + cfg.tile_height,
+            );
+
+            // Try to convert the sub portion of the image into a tile
+            let res = pal.identify_tile(&sub_img.to_image());
+            match res {
+                Ok((_, tile)) => {
+                    // We identified the tile with it's corresponding palette.
+                    // Now we can store the tile at the requested index.
+                    self.set_tile(tile_idx, tile);
+                }
+                Err(_) => {
+                    errors.push(TileError::NoPaletteMatch(pos));
+                }
+            }
+        }
+
+        // If we encountered errors, return them
+        if errors.is_empty() {
+            Ok(())
         } else {
             Err(errors)
         }

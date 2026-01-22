@@ -12,7 +12,7 @@ mod serial;
 
 use image::{Luma, LumaA, Rgb, Rgba};
 use ndarray::{Array2, Ix, Ix2};
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 /// Define a pixel in a tile
 pub type Pix = u8;
@@ -58,6 +58,10 @@ pub enum Flip {
     /// Flip horizontally and vertically
     Both = 0b11,
 }
+
+/// Enforce a fixed mapping between a tile position and a target index
+#[derive(Default, Debug, Clone)]
+pub struct Mapping(Rc<HashMap<[u32; 2], usize>>);
 
 /// Indexes to reconstruct the pictural data
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]

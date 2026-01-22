@@ -1,7 +1,7 @@
 use super::{InputImage, InputStack};
 use crate::tileset::{PaletteSetRgba, builder::BuilderConfig};
 use asefile::AsepriteFile;
-use image::{Rgba, RgbaImage};
+use image::{DynamicImage, RgbaImage};
 use std::path::Path;
 
 impl InputStack {
@@ -16,30 +16,35 @@ impl InputStack {
     }
 
     /// Add a static image to the stack
-    pub fn add_static(&mut self, path: &Path, image: RgbaImage, palette: Option<PaletteSetRgba>) {
+    pub fn add(&mut self, path: &Path, image: InputImage, palette: Option<PaletteSetRgba>) {
         // Pick the palette to use
         let palette = palette.unwrap_or_else(|| self.palette.clone());
 
         // Add the image to the stack
-        self.stack
-            .push((path.to_path_buf(), InputImage::Static(image), palette));
+        self.stack.push((path.to_path_buf(), image, palette));
     }
+}
 
-    /// Add an animated image to the stack
-    pub fn add_animated(
-        &mut self,
-        path: &Path,
-        image: AsepriteFile,
-        palette: Option<PaletteSetRgba>,
-    ) {
-        // Pick the palette to use
-        let palette = palette.unwrap_or_else(|| self.palette.clone());
+/// Convert a simple image
+impl From<RgbaImage> for InputImage {
+    #[inline]
+    fn from(value: RgbaImage) -> Self {
+        Self::Static(value)
+    }
+}
 
-        // Add the image to the stack
-        self.stack.push((
-            path.to_path_buf(),
-            InputImage::Animated(Box::new(image)),
-            palette,
-        ));
+/// Convert a simple image
+impl From<DynamicImage> for InputImage {
+    #[inline]
+    fn from(value: DynamicImage) -> Self {
+        Self::Static(value.to_rgba8())
+    }
+}
+
+/// Convert a Aseprite file
+impl From<AsepriteFile> for InputImage {
+    #[inline]
+    fn from(value: AsepriteFile) -> Self {
+        Self::Animated(Box::new(value))
     }
 }
