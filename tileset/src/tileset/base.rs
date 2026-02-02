@@ -1,7 +1,9 @@
+use crate::tileset::Mapping;
+
 use super::{Flip, IndexMap, IndexTile, PaletteSet, Pix, Tile, TileSet};
 use core::hash::{Hash, Hasher};
 use ndarray::{Array2, Axis};
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 impl TileSet {
     /// Create a new tileset from raw data
@@ -152,6 +154,14 @@ impl IndexMap {
     /// Create a new index map
     #[inline]
     pub fn new(data: Array2<IndexTile>) -> Self {
+        Self(Rc::new(data))
+    }
+}
+
+impl Mapping {
+    /// Create a new mapping from a hashmap
+    #[inline]
+    pub fn new(data: HashMap<[u32; 2], usize>) -> Self {
         Self(Rc::new(data))
     }
 }

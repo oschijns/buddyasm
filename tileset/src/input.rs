@@ -7,14 +7,10 @@ mod load;
 /// Process a stack
 mod process;
 
-use crate::tileset::{IndexMap, PaletteSetRgba, TileSet, builder::BuilderConfig};
+use crate::tileset::{IndexMap, Mapping, PaletteSetRgba, TileSet, builder::BuilderConfig};
 use asefile::AsepriteFile;
-use core::error::Error;
 use image::RgbaImage;
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, path::PathBuf};
 
 /// Define a stack of data to process
 #[derive(Debug)]
@@ -38,6 +34,15 @@ pub enum InputImage {
 
     /// Animated image from Aseprite
     Animated(Box<AsepriteFile>),
+
+    /// static image with fixed target positions
+    FixedPosition {
+        /// Input image to process
+        image: RgbaImage,
+
+        /// Fixed mapping for the tiles
+        mapping: Mapping,
+    },
 }
 
 /// TileSet generated and associated index maps
@@ -98,18 +103,4 @@ pub enum OutputAnimation {
         /// Down variant of the animation
         down: IndexMap,
     },
-}
-
-pub fn test() -> Result<(), Box<dyn Error>> {
-    let anim = asefile::AsepriteFile::read_file(Path::new("test"))?;
-
-    let tag = anim.get_tag(0).unwrap();
-    let frame = anim.frame(0).image();
-
-    //DynamicImage::ImageLuma16(())
-    //GrayImage::from(frame);
-
-    let dir = tag.animation_direction();
-
-    Ok(())
 }
