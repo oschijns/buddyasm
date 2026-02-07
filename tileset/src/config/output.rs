@@ -1,58 +1,17 @@
-/// Simple operations
-mod base;
+//! Output data to write to disk.
 
-/// Load the input data from files
-mod load;
-
-/// Process a stack
-mod process;
-
-use crate::tileset::{IndexMap, Mapping, PaletteSetRgba, TileSet, builder::BuilderConfig};
-use asefile::AsepriteFile;
-use image::RgbaImage;
-use std::{collections::HashMap, path::PathBuf};
-
-/// Define a stack of data to process
-#[derive(Debug)]
-pub struct InputStack {
-    /// Configuration of the tileset to build
-    config: BuilderConfig,
-
-    /// Default palette to use if one is not explicitely set
-    palette: PaletteSetRgba,
-
-    /// Stack of images to process
-    stack: Vec<(PathBuf, InputImage, PaletteSetRgba)>,
-}
-
-/// Define one element to process
-/// Either a static image or an animated sprite
-#[derive(Debug)]
-pub enum InputImage {
-    /// static image
-    Static(RgbaImage),
-
-    /// Animated image from Aseprite
-    Animated(Box<AsepriteFile>),
-
-    /// static image with fixed target positions
-    FixedPosition {
-        /// Input image to process
-        image: RgbaImage,
-
-        /// Fixed mapping for the tiles
-        mapping: Mapping,
-    },
-}
+use crate::data::{flip::Flip, tile::TileSet};
+use ndarray::Array2;
+use std::{collections::HashMap, path::PathBuf, rc::Rc};
 
 /// TileSet generated and associated index maps
 #[derive(Debug)]
 pub struct OutputStack {
     /// Generated tileset
-    tileset: TileSet,
+    pub(crate) tileset: TileSet,
 
     /// Associated index maps
-    images: HashMap<PathBuf, OutputImage>,
+    pub(crate) images: HashMap<PathBuf, OutputImage>,
 }
 
 /// Result of processing a single image from the stack
@@ -90,7 +49,7 @@ pub enum OutputAnimation {
     },
 
     /// Produce variants for all four directions
-    FourWay {
+    FourWays {
         /// Left variant of the animation
         left: IndexMap,
 
@@ -103,4 +62,41 @@ pub enum OutputAnimation {
         /// Down variant of the animation
         down: IndexMap,
     },
+}
+
+/// Indexes map to reconstruct the pictural data
+#[derive(Debug, Clone)]
+pub struct IndexMap(pub(crate) Rc<Array2<IndexTile>>);
+
+/// Indexes to reconstruct the pictural data
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct IndexTile {
+    /// Index of the tile
+    pub(crate) tile: usize,
+
+    /// Index of the palette
+    pub(crate) palette: usize,
+
+    /// Flip horizontally and/or vertically
+    pub(crate) flip: Flip,
+}
+
+impl IndexTile {
+    /// Create index data for a tile
+    #[inline]
+    pub fn new(tile: usize, palette: usize, flip: Flip) -> Self {
+        Self {
+            tile,
+            palette,
+            flip,
+        }
+    }
+}
+
+impl IndexMap {
+    /// Create a new index map
+    #[inline]
+    pub fn new(data: Array2<IndexTile>) -> Self {
+        Self(Rc::new(data))
+    }
 }

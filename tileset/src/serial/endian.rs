@@ -1,3 +1,5 @@
+//! Provide functions to layout integer primitives into either little endian or big endian.
+
 use bitvec::{order::BitOrder, vec::BitVec};
 use bytes::{BufMut, Bytes, BytesMut};
 

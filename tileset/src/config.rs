@@ -1,0 +1,6 @@
+//! Configuration to run the program
+
+pub mod input;
+pub mod manifest;
+pub mod output;
+pub mod profile;

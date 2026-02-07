@@ -1,66 +1,23 @@
-use crate::tileset::Mapping;
+//! Read the input data and generate tiles.
 
-use super::{Flip, IndexMap, IndexTile, PaletteSet, Pix, Tile, TileSet, to_index};
-use core::{fmt, ops::Deref};
+use crate::{
+    config::{
+        input::BuilderConfig,
+        output::{IndexMap, IndexTile},
+    },
+    data::{
+        coords::{Coords, Dimensions},
+        flip::Flip,
+        mapping::Mapping,
+        palette::PaletteSet,
+        tile::{Tile, TileSet},
+    },
+};
+use core::ops::Deref;
 use image::{EncodableLayout, GenericImageView, ImageBuffer, Pixel};
 use itertools::Itertools;
-use ndarray::Array2;
-use serde::Deserialize;
+use ndarray::{Array2, Ix2};
 use std::collections::HashMap;
-
-/// Error encountered when processing an input image
-#[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TileError {
-    /// If no palette match the given tile
-    #[error("No matching palette for tile at {0}")]
-    NoPaletteMatch(TilePos),
-
-    /// There are too many different tiles in the provided image
-    #[error("Too many distinct tiles starting at {0}")]
-    DistinctOverflow(TilePos),
-
-    /// The requested tile position is out of the image
-    #[error("Requested tile position {0} is out of bound")]
-    OutOfBound(TilePos),
-
-    /// The given index is out of the boundaries of the target tileset
-    #[error("Given index {0} is out of bound")]
-    InvalidIndex(usize),
-}
-
-/// Error encountered when trying to find a palette for a given tile
-#[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
-#[error("No matching palette for the tile")]
-pub struct NoPaletteMatchError;
-
-/// Define the position of a tile in an image in pixels coordinates
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct TilePos {
-    /// X coordinate of the tile
-    x: u32,
-
-    /// Y coordinate of the tile
-    y: u32,
-}
-
-/// Define a configuration to process the input images
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-pub struct BuilderConfig {
-    /// Size of the tileset to produce
-    tile_count: usize,
-
-    /// With of a tile in pixels
-    tile_width: u32,
-
-    /// Height of a tile in pixels
-    tile_height: u32,
-
-    /// Specify wherever tiles can be flipped horizontally
-    flip_horizontal: bool,
-
-    /// Specify wherever tiles can be flipped vertically
-    flip_vertical: bool,
-}
 
 /// Builder that will process multiple input images to compose a tileset
 #[derive(Debug)]
@@ -77,6 +34,31 @@ pub struct TileMapBuilder {
     /// Keep track of the slots that are still vacant
     vacancy: Vec<bool>,
 }
+
+/// Error encountered when processing an input image
+#[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TileError {
+    /// If no palette match the given tile
+    #[error("No matching palette for tile at {0}")]
+    NoPaletteMatch(Coords),
+
+    /// There are too many different tiles in the provided image
+    #[error("Too many distinct tiles starting at {0}")]
+    DistinctOverflow(Coords),
+
+    /// The requested tile position is out of the image
+    #[error("Requested tile position {0} is out of bound")]
+    OutOfBound(Coords),
+
+    /// The given index is out of the boundaries of the target tileset
+    #[error("Given index {0} is out of bound")]
+    InvalidIndex(usize),
+}
+
+/// Error encountered when trying to find a palette for a given tile
+#[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
+#[error("No matching palette for the tile")]
+pub struct NoPaletteMatchError;
 
 impl TileMapBuilder {
     /// Create a builder with the provided config
@@ -161,31 +143,25 @@ impl TileMapBuilder {
         [P::Subpixel]: EncodableLayout,
         Q: 'static + Deref<Target = [P::Subpixel]>,
     {
-        let cfg = self.config;
-
-        // Figure out the dimensions of the input image
-        let (img_w, img_h) = img.dimensions();
-
-        // Define the dimensions of the input images in terms of tiles
-        let idx_w = img_w / cfg.tile_width;
-        let idx_h = img_h / cfg.tile_height;
+        // Get the dimensions of the input images in tiles.
+        let tile_size = self.config.tile_size();
+        let dims = Dimensions::from_img(img.dimensions(), tile_size);
 
         // Create a container to store index data
-        let mut index_map = Array2::<IndexTile>::default(to_index(idx_w, idx_h));
+        let mut index_map = Array2::<IndexTile>::default(Ix2::from(dims));
 
         // Push errors into this list
         let mut errors = Vec::<TileError>::new();
 
         // Iterate over each tile of the input image
-        for (tx, ty) in (0..idx_w).cartesian_product(0..idx_h) {
+        for index in 0..dims.count() {
             // Define the limits of the tile in pixels
-            let pos = TilePos::new(tx * cfg.tile_width, ty * cfg.tile_height);
-            let sub_img = img.view(
-                pos.x,
-                pos.y,
-                pos.x + cfg.tile_width,
-                pos.y + cfg.tile_height,
-            );
+            let coords = dims.to_coords(index);
+            let ix2 = Ix2::from(coords);
+
+            // Extract a sub part of the image
+            let [px0, py0, px1, py1] = coords.bounds(tile_size);
+            let sub_img = img.view(px0, py0, px1, py1);
 
             // Try to convert the sub portion of the image into a tile
             let res = pal.identify_tile(&sub_img.to_image());
@@ -196,21 +172,21 @@ impl TileMapBuilder {
                     if let Some((tile_idx, flip)) = self.tile_to_index.get(&tile) {
                         // The tile already exists in the set,
                         // store the corresponding index in the index map.
-                        index_map[to_index(tx, ty)] = IndexTile::new(*tile_idx, pal_idx, *flip);
+                        index_map[ix2] = IndexTile::new(*tile_idx, pal_idx, *flip);
                     } else if let Some((tile_idx, _)) =
                         self.vacancy.iter().find_position(|&&vacant| vacant)
                     {
                         // If we cannot find a matching tile in the set,
                         // add the new tile to the set at the first available slot.
                         self.set_tile(tile_idx, tile);
-                        index_map[to_index(tx, ty)] = IndexTile::new(tile_idx, pal_idx, Flip::None);
+                        index_map[ix2] = IndexTile::new(tile_idx, pal_idx, Flip::None);
                     } else {
                         // We tried to store the new tile in the set, but there are no more room.
-                        errors.push(TileError::DistinctOverflow(pos));
+                        errors.push(TileError::DistinctOverflow(coords));
                     }
                 }
                 Err(_) => {
-                    errors.push(TileError::NoPaletteMatch(pos));
+                    errors.push(TileError::NoPaletteMatch(coords));
                 }
             }
         }
@@ -236,20 +212,15 @@ impl TileMapBuilder {
         [P::Subpixel]: EncodableLayout,
         Q: 'static + Deref<Target = [P::Subpixel]>,
     {
-        let cfg = self.config;
-
-        // Figure out the dimensions of the input image
-        let (img_w, img_h) = img.dimensions();
-
-        // Define the dimensions of the input images in terms of tiles
-        let idx_w = img_w / cfg.tile_width;
-        let idx_h = img_h / cfg.tile_height;
+        // Get the dimensions of the input images in tiles.
+        let tile_size = self.config.tile_size();
+        let dims = Dimensions::from_img(img.dimensions(), tile_size);
 
         // Push errors into this list
         let mut errors = Vec::<TileError>::new();
 
         // Iterate over the positions provided
-        for (&[tx, ty], &tile_idx) in map.0.iter() {
+        for (&coords, &tile_idx) in map.0.iter() {
             // Check that the requested position is valid
             // and that the target index is still free.
             if !self.vacancy[tile_idx] {
@@ -257,19 +228,14 @@ impl TileMapBuilder {
                 continue;
             }
 
-            let pos = TilePos::new(tx * cfg.tile_width, ty * cfg.tile_height);
-            if tx >= idx_w || ty >= idx_h {
-                errors.push(TileError::OutOfBound(pos));
+            if !dims.contains(coords) {
+                errors.push(TileError::OutOfBound(coords));
                 continue;
             }
 
-            // Define the limits of the tile in pixels
-            let sub_img = img.view(
-                pos.x,
-                pos.y,
-                pos.x + cfg.tile_width,
-                pos.y + cfg.tile_height,
-            );
+            // Extract a sub part of the image
+            let [px0, py0, px1, py1] = coords.bounds(tile_size);
+            let sub_img = img.view(px0, py0, px1, py1);
 
             // Try to convert the sub portion of the image into a tile
             let res = pal.identify_tile(&sub_img.to_image());
@@ -280,7 +246,7 @@ impl TileMapBuilder {
                     self.set_tile(tile_idx, tile);
                 }
                 Err(_) => {
-                    errors.push(TileError::NoPaletteMatch(pos));
+                    errors.push(TileError::NoPaletteMatch(coords));
                 }
             }
         }
@@ -291,75 +257,5 @@ impl TileMapBuilder {
         } else {
             Err(errors)
         }
-    }
-}
-
-impl<P> PaletteSet<P>
-where
-    P: Pixel,
-{
-    /// Check the content of the provided sub image to try to deduce a palette
-    /// index and an encoding of the tile. If no palette defined in this set
-    /// matches the provided image, return an error.
-    pub fn identify_tile<Q>(
-        &self,
-        img: &ImageBuffer<P, Q>,
-    ) -> Result<(usize, Tile), NoPaletteMatchError>
-    where
-        P: PartialEq,
-        [P::Subpixel]: EncodableLayout,
-        Q: Deref<Target = [P::Subpixel]>,
-    {
-        // Figure out the dimensions of the input image
-        let (w, h) = img.dimensions();
-
-        // Create a tile to store the result
-        let mut tile = Array2::zeros(to_index(w, h));
-
-        // Try each palette successively
-        'pal: for (i, palette) in self.0.columns().into_iter().enumerate() {
-            // iterate over each pixel of the input image
-            'pix: for (x, y, pixel) in img.enumerate_pixels() {
-                // Check if the pixel is part of the palette selected
-                for (j, color) in palette.iter().enumerate() {
-                    // Pixel of the image matches color from the selected palette
-                    if *pixel == *color {
-                        // Store the corresponding index in the tile we are making
-                        tile[to_index(x, y)] = j as Pix;
-
-                        // We can move on to the next pixel
-                        continue 'pix;
-                    }
-                }
-
-                // We have iterated over each color of the current palette.
-                // We'll try the next palette.
-                continue 'pal;
-            }
-
-            // We have filled the tile with indexes
-            // the palette we used is a full match.
-            return Ok((i, Tile::new(tile)));
-        }
-
-        // We've look into each color of the palette selected but could
-        // not find a match. We'll try again with the next palette.
-        Err(NoPaletteMatchError)
-    }
-}
-
-impl TilePos {
-    /// Create position for the tile
-    #[inline]
-    pub fn new(x: u32, y: u32) -> Self {
-        Self { x, y }
-    }
-}
-
-impl fmt::Display for TilePos {
-    /// Print the tile coordinates
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({}, {}) pix²", self.x, self.y)
     }
 }

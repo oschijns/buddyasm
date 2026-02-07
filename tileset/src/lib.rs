@@ -1,5 +1,5 @@
-/// Tile set data structure
-pub mod tileset;
+//! Process pictures to generate a unified tileset
 
-/// Read input images to process them
-pub mod input;
+pub mod config;
+pub mod data;
+pub mod serial;

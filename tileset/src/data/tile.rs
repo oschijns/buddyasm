@@ -1,9 +1,20 @@
-use crate::tileset::Mapping;
+//! Tile and TileSet
 
-use super::{Flip, IndexMap, IndexTile, PaletteSet, Pix, Tile, TileSet};
+use crate::data::flip::Flip;
 use core::hash::{Hash, Hasher};
 use ndarray::{Array2, Axis};
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
+
+/// Define a pixel in a tile
+pub type Pix = u8;
+
+/// Tile to serialize in a given binary layout
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Tile(pub(crate) Rc<Array2<Pix>>);
+
+/// Tileset containing tiles
+#[derive(Debug, Clone)]
+pub struct TileSet(pub(crate) Rc<Vec<Tile>>);
 
 impl TileSet {
     /// Create a new tileset from raw data
@@ -113,55 +124,5 @@ impl Hash for Tile {
         H: Hasher,
     {
         self.0.hash(state);
-    }
-}
-
-impl Flip {
-    /// Return true if the tile is flipped horizontally
-    #[inline]
-    pub fn horizontal(self) -> bool {
-        matches!(self, Self::Horizontal | Self::Both)
-    }
-
-    /// Return true if the tile is flipped vertically
-    #[inline]
-    pub fn vertical(self) -> bool {
-        matches!(self, Self::Vertical | Self::Both)
-    }
-}
-
-impl<C> PaletteSet<C> {
-    /// Create a new palette set
-    #[inline]
-    pub fn new(data: Array2<C>) -> Self {
-        Self(Rc::new(data))
-    }
-}
-
-impl IndexTile {
-    /// Create index data for a tile
-    #[inline]
-    pub fn new(tile: usize, palette: usize, flip: Flip) -> Self {
-        Self {
-            tile,
-            palette,
-            flip,
-        }
-    }
-}
-
-impl IndexMap {
-    /// Create a new index map
-    #[inline]
-    pub fn new(data: Array2<IndexTile>) -> Self {
-        Self(Rc::new(data))
-    }
-}
-
-impl Mapping {
-    /// Create a new mapping from a hashmap
-    #[inline]
-    pub fn new(data: HashMap<[u32; 2], usize>) -> Self {
-        Self(Rc::new(data))
     }
 }

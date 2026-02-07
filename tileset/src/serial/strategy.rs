@@ -1,8 +1,10 @@
-use crate::tileset::TileSet;
+//! Define generic strategies for serializing a tile.
+
+use crate::data::tile::TileSet;
 use bitvec::{order::BitOrder, store::BitStore, vec::BitVec};
 
 /// Define a serialization strategy for the tileset
-pub trait SerialInner<T, O>
+pub(crate) trait SerialStrategy<T, O>
 where
     T: BitStore,
     O: BitOrder,
@@ -16,22 +18,22 @@ pub struct SerialMono;
 /// Serialize the tileset linearly
 pub struct SerialLinear {
     /// How many bits are used to define a pixel
-    bits_per_pixel: usize,
+    pub(crate) bits_per_pixel: usize,
 }
 
 /// Serialize the tileset as distinct bitplanes
 pub struct SerialSplit {
     /// How many bits are used to define a pixel
-    bits_per_pixel: usize,
+    pub(crate) bits_per_pixel: usize,
 }
 
 /// Serialize the tileset by intertwining rows by rows
 pub struct SerialRowIntertwine {
     /// How many bits are used to define a pixel
-    bits_per_pixel: usize,
+    pub(crate) bits_per_pixel: usize,
 
     /// Define how many rows are intertwined
-    intertwined_rows: usize,
+    pub(crate) intertwined_rows: usize,
 }
 
 impl SerialLinear {
@@ -61,7 +63,7 @@ impl SerialRowIntertwine {
     }
 }
 
-impl<T, O> SerialInner<T, O> for SerialMono
+impl<T, O> SerialStrategy<T, O> for SerialMono
 where
     T: BitStore,
     O: BitOrder,
@@ -84,7 +86,7 @@ where
     }
 }
 
-impl<T, O> SerialInner<T, O> for SerialLinear
+impl<T, O> SerialStrategy<T, O> for SerialLinear
 where
     T: BitStore,
     O: BitOrder,
@@ -109,7 +111,7 @@ where
     }
 }
 
-impl<T, O> SerialInner<T, O> for SerialSplit
+impl<T, O> SerialStrategy<T, O> for SerialSplit
 where
     T: BitStore,
     O: BitOrder,
@@ -137,7 +139,7 @@ where
     }
 }
 
-impl<T, O> SerialInner<T, O> for SerialRowIntertwine
+impl<T, O> SerialStrategy<T, O> for SerialRowIntertwine
 where
     T: BitStore,
     O: BitOrder,
