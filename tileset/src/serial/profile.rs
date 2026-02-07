@@ -59,8 +59,8 @@ pub struct SerialWonderSwan;
 /// Define the serialization for the MasterSystem
 pub struct SerialMasterSystem;
 
-/// Define the serialization for the Genesis
-pub struct SerialGenesis;
+/// Define the serialization for the MegaDrive
+pub struct SerialMegaDrive;
 
 impl SerialTile for SerialFamicom {
     /// Serialize the tileset in a Famicom compatible layout
@@ -134,8 +134,8 @@ impl SerialTile for SerialMasterSystem {
     }
 }
 
-impl SerialTile for SerialGenesis {
-    /// Serialize the tileset in a Genesis compatible layout
+impl SerialTile for SerialMegaDrive {
+    /// Serialize the tileset in a MegaDrive compatible layout
     fn serialize(&self, tileset: &TileSet) -> Bytes {
         let bits: BitVec<u32, Lsb0> = SerialLinear::new(4).serialize(tileset);
         bits_to_u32_be(&bits)

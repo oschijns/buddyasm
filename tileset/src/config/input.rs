@@ -59,9 +59,39 @@ pub struct BuilderConfig {
 }
 
 impl BuilderConfig {
+    /// Create a config from parameters
+    #[inline]
+    pub fn new(
+        tile_count: usize,
+        tile_width: u32,
+        tile_height: u32,
+        flip_horizontal: bool,
+        flip_vertical: bool,
+    ) -> Self {
+        Self {
+            tile_count,
+            tile_width,
+            tile_height,
+            flip_horizontal,
+            flip_vertical,
+        }
+    }
+
     /// Get the size of the tile
     #[inline]
     pub fn tile_size(&self) -> TileSize {
         TileSize::new(self.tile_width, self.tile_height)
+    }
+}
+
+impl Default for BuilderConfig {
+    fn default() -> Self {
+        Self {
+            tile_count: 256,
+            tile_width: 8,
+            tile_height: 8,
+            flip_horizontal: false,
+            flip_vertical: false,
+        }
     }
 }

@@ -1,0 +1,6 @@
+[config]
+
+
+
+# Default palette to use for processing the spritework
+default_palette = "assets/palette.png"
