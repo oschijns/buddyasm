@@ -18,95 +18,162 @@ pub trait TileConfig {
 
 /// Most background tile are limited to 8x8 with possibly X & Y flipping
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
-pub struct BgTile<const FLIP: bool = false>;
+pub struct BgTile<const FLIP: bool = true>;
+
+/// Fixed size sprite
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub struct FgSprite<const SIZE: u32 = 8>;
 
 /// Sprite modes supported by the Famicom / GameBoy
+#[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub enum SpriteNintendo1 {
     /// Small 8x8 sprite
     #[default]
+    #[serde(rename = "8x8")]
     S8x8,
 
     /// Larger 8x16 sprite
+    #[serde(rename = "8x16")]
     S8x16,
 }
 
 /// Sprite modes supported by the Super Famicom / Virtual Boy
+#[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub enum SpriteNintendo2 {
     /// 8x8 sprite
     #[default]
+    #[serde(rename = "8x8")]
     S8x8,
 
     /// 16x16 sprite
+    #[serde(rename = "16x16")]
     S16x16,
 
     /// 32x32 sprite
+    #[serde(rename = "32x32")]
     S32x32,
 
     /// 64x64 sprite
+    #[serde(rename = "64x64")]
     S64x64,
 }
 
 /// Sprite modes supported by the PC-Engine
+#[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub enum SpritePcEngine {
     /// 16x16 sprite
     #[default]
+    #[serde(rename = "16x16")]
     S16x16,
 
     /// 16x32 sprite
+    #[serde(rename = "16x32")]
     S16x32,
 
     /// 16x48 sprite
+    #[serde(rename = "16x48")]
     S16x48,
 
     /// 16x64 sprite
+    #[serde(rename = "16x64")]
     S16x64,
 
     /// 32x16 sprite
+    #[serde(rename = "32x16")]
     S32x16,
 
     /// 32x32 sprite
+    #[serde(rename = "32x32")]
     S32x32,
 
     /// 32x48 sprite
+    #[serde(rename = "32x48")]
     S32x48,
 
     /// 32x64 sprite
+    #[serde(rename = "32x64")]
     S32x64,
 }
 
 /// Sprite modes supported by the NeoGeo Pocket
+#[repr(C)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub enum SpriteNeoGeoPocket {
     /// 8x8 sprite
     #[default]
+    #[serde(rename = "8x8")]
     S8x8,
 
     /// 8x16 sprite
+    #[serde(rename = "8x16")]
     S8x16,
 
     /// 8x32 sprite
+    #[serde(rename = "8x32")]
     S8x32,
 
     /// 16x8 sprite
+    #[serde(rename = "16x8")]
     S16x8,
 
     /// 16x16 sprite
+    #[serde(rename = "16x16")]
     S16x16,
 
     /// 16x32 sprite
+    #[serde(rename = "16x32")]
     S16x32,
 
     /// 32x8 sprite
+    #[serde(rename = "32x8")]
     S32x8,
 
     /// 32x16 sprite
+    #[serde(rename = "32x16")]
     S32x16,
 
-    /// 32x64 sprite
-    S32x64,
+    /// 32x32 sprite
+    #[serde(rename = "32x32")]
+    S32x32,
+}
+
+/// Sprite modes supported by the SEGA Master System
+#[repr(C)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub enum SpriteSegaMS {
+    /// Small 8x8 sprite
+    #[default]
+    #[serde(rename = "8x8")]
+    S8x8,
+
+    /// Larger 8x16 sprite
+    #[serde(rename = "8x16")]
+    S8x16,
+}
+
+/// Sprite modes supported by the SEGA MegaDrive
+#[repr(C)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub enum SpriteSegaMD {
+    /// 8x8 sprite
+    #[default]
+    #[serde(rename = "8x8")]
+    S8x8,
+
+    /// 16x16 sprite
+    #[serde(rename = "16x16")]
+    S16x16,
+
+    /// 24x24 sprite
+    #[serde(rename = "24x24")]
+    S24x24,
+
+    /// 32x32 sprite
+    #[serde(rename = "32x32")]
+    S32x32,
 }
 
 /// Specify if we are processing tile or sprite data
@@ -127,6 +194,13 @@ impl<const FLIP: bool> TileConfig for BgTile<FLIP> {
     #[inline]
     fn flipping(&self) -> [bool; 2] {
         [FLIP, FLIP]
+    }
+}
+
+impl<const SIZE: u32> TileConfig for FgSprite<SIZE> {
+    #[inline]
+    fn tile_size(&self) -> TileSize {
+        TileSize::new(SIZE, SIZE)
     }
 }
 
@@ -180,7 +254,36 @@ impl TileConfig for SpriteNeoGeoPocket {
             Self::S16x32 => TileSize::new(16, 32),
             Self::S32x8  => TileSize::new(32,  8),
             Self::S32x16 => TileSize::new(32, 16),
-            Self::S32x64 => TileSize::new(32, 32),
+            Self::S32x32 => TileSize::new(32, 32),
+        }
+    }
+}
+
+impl TileConfig for SpriteSegaMS {
+    /// The Master System supported tile flipping
+    /// but not sprite flipping for some reason...
+    #[inline]
+    fn flipping(&self) -> [bool; 2] {
+        [false, false]
+    }
+
+    #[rustfmt::skip]
+    fn tile_size(&self) -> TileSize {
+        match self {
+            Self::S8x8  => TileSize::new(8,  8),
+            Self::S8x16 => TileSize::new(8, 16),
+        }
+    }
+}
+
+impl TileConfig for SpriteSegaMD {
+    #[rustfmt::skip]
+    fn tile_size(&self) -> TileSize {
+        match self {
+            Self::S8x8   => TileSize::new( 8,  8),
+            Self::S16x16 => TileSize::new(16, 16),
+            Self::S24x24 => TileSize::new(24, 24),
+            Self::S32x32 => TileSize::new(32, 32),
         }
     }
 }

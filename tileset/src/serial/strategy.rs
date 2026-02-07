@@ -39,7 +39,7 @@ pub struct SerialRowIntertwine {
 impl SerialLinear {
     /// Define linear layout serialization
     #[inline]
-    pub fn new(bits_per_pixel: usize) -> Self {
+    pub const fn new(bits_per_pixel: usize) -> Self {
         Self { bits_per_pixel }
     }
 }
@@ -47,7 +47,7 @@ impl SerialLinear {
 impl SerialSplit {
     /// Define splitted bitplane layout serialization
     #[inline]
-    pub fn new(bits_per_pixel: usize) -> Self {
+    pub const fn new(bits_per_pixel: usize) -> Self {
         Self { bits_per_pixel }
     }
 }
@@ -55,7 +55,7 @@ impl SerialSplit {
 impl SerialRowIntertwine {
     /// Define intertwined rows layout serialization
     #[inline]
-    pub fn new(bits_per_pixel: usize, intertwined_rows: usize) -> Self {
+    pub const fn new(bits_per_pixel: usize, intertwined_rows: usize) -> Self {
         Self {
             bits_per_pixel,
             intertwined_rows,

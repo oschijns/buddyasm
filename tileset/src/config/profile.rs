@@ -3,8 +3,8 @@
 use crate::config::{
     input::BuilderConfig,
     tile::{
-        BgTile, SpriteNeoGeoPocket, SpriteNintendo1, SpriteNintendo2, SpritePcEngine, TileConfig,
-        TileOrSprite,
+        BgTile, FgSprite, SpriteNeoGeoPocket, SpriteNintendo1, SpriteNintendo2, SpritePcEngine,
+        SpriteSegaMD, SpriteSegaMS, TileConfig, TileOrSprite,
     },
 };
 use serde::Deserialize;
@@ -36,18 +36,18 @@ pub enum Profile {
     NeoGeoPocket(ProfileNeoGeoPocket),
 
     /// Wonder Swan
-    WonderSwan,
+    WonderSwan(ProfileWonderSwan),
 
     /// Master System
-    MasterSystem,
+    MasterSystem(ProfileMasterSystem),
 
     /// MegaDrive / Genesis
-    MegaDrive,
+    MegaDrive(ProfileMegaDrive),
 }
 
 /// Famicom Profile
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-pub struct ProfileFamicom(pub(crate) TileOrSprite<BgTile, SpriteNintendo1>);
+pub struct ProfileFamicom(pub(crate) TileOrSprite<BgTile<false>, SpriteNintendo1>);
 
 // <TODO>
 // The SNES supports two sprites size at the same time.
@@ -59,23 +59,52 @@ pub struct ProfileFamicom(pub(crate) TileOrSprite<BgTile, SpriteNintendo1>);
 
 /// Super Famicom Profile
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-pub struct ProfileSuperFamicom(pub(crate) TileOrSprite<BgTile<true>, SpriteNintendo2>);
+pub struct ProfileSuperFamicom(pub(crate) TileOrSprite<BgTile, SpriteNintendo2>);
 
 /// Game Boy Profile
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-pub struct ProfileGameBoy(pub(crate) TileOrSprite<BgTile, SpriteNintendo1>);
+pub struct ProfileGameBoy(pub(crate) TileOrSprite<BgTile<false>, SpriteNintendo1>);
 
 /// Virtual Boy Profile
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-pub struct ProfileVirtualBoy(pub(crate) TileOrSprite<BgTile<true>, SpriteNintendo2>);
+pub struct ProfileVirtualBoy(pub(crate) TileOrSprite<BgTile, SpriteNintendo2>);
 
 /// PC-Engine Profile
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-pub struct ProfilePcEngine(pub(crate) TileOrSprite<BgTile<true>, SpritePcEngine>);
+pub struct ProfilePcEngine(pub(crate) TileOrSprite<BgTile, SpritePcEngine>);
 
 /// NeoGeo Pocket Profile
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-pub struct ProfileNeoGeoPocket(pub(crate) TileOrSprite<BgTile<true>, SpriteNeoGeoPocket>);
+pub struct ProfileNeoGeoPocket(pub(crate) TileOrSprite<BgTile, SpriteNeoGeoPocket>);
+
+/// WonderSwan Profile
+#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+pub struct ProfileWonderSwan(pub(crate) TileOrSprite<BgTile, FgSprite>);
+
+/// Master System Profile
+#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+pub struct ProfileMasterSystem(pub(crate) TileOrSprite<BgTile, SpriteSegaMS>);
+
+/// MegaDrive Profile
+#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+pub struct ProfileMegaDrive(pub(crate) TileOrSprite<BgTile, SpriteSegaMD>);
+
+impl ToConfig for Profile {
+    #[rustfmt::skip]
+    fn to_config(&self) -> BuilderConfig {
+        match self {
+            Self::Famicom     (profile) => profile.to_config(),
+            Self::SuperFamicom(profile) => profile.to_config(),
+            Self::GameBoy     (profile) => profile.to_config(),
+            Self::VirtualBoy  (profile) => profile.to_config(),
+            Self::PcEngine    (profile) => profile.to_config(),
+            Self::NeoGeoPocket(profile) => profile.to_config(),
+            Self::WonderSwan  (profile) => profile.to_config(),
+            Self::MasterSystem(profile) => profile.to_config(),
+            Self::MegaDrive   (profile) => profile.to_config(),
+        }
+    }
+}
 
 /// Famicom Config
 impl ToConfig for ProfileFamicom {
@@ -114,6 +143,27 @@ impl ToConfig for ProfilePcEngine {
 
 /// NeoGeo Pocket Config
 impl ToConfig for ProfileNeoGeoPocket {
+    fn to_config(&self) -> BuilderConfig {
+        build_config(&self.0)
+    }
+}
+
+/// WonderSwan Config
+impl ToConfig for ProfileWonderSwan {
+    fn to_config(&self) -> BuilderConfig {
+        build_config(&self.0)
+    }
+}
+
+/// Master System Config
+impl ToConfig for ProfileMasterSystem {
+    fn to_config(&self) -> BuilderConfig {
+        build_config(&self.0)
+    }
+}
+
+/// MegaDrive Config
+impl ToConfig for ProfileMegaDrive {
     fn to_config(&self) -> BuilderConfig {
         build_config(&self.0)
     }

@@ -21,7 +21,7 @@ pub struct Dimensions(pub(crate) Vec2);
 impl Coords {
     /// Coordinates from X and Y
     #[inline]
-    pub fn new(x: u32, y: u32) -> Self {
+    pub const fn new(x: u32, y: u32) -> Self {
         Self([x, y])
     }
 
@@ -39,7 +39,7 @@ impl Coords {
 impl TileSize {
     /// Tile size from width and height
     #[inline]
-    pub fn new(width: u32, height: u32) -> Self {
+    pub const fn new(width: u32, height: u32) -> Self {
         Self([width, height])
     }
 }
@@ -47,25 +47,25 @@ impl TileSize {
 impl Dimensions {
     /// Dimensions from width and height in tiles
     #[inline]
-    pub fn new(width: u32, height: u32) -> Self {
+    pub const fn new(width: u32, height: u32) -> Self {
         Self([width, height])
     }
 
     /// Get width in tiles
     #[inline]
-    pub fn width(self) -> u32 {
+    pub const fn width(self) -> u32 {
         self.0[0]
     }
 
     /// Get height in tiles
     #[inline]
-    pub fn height(self) -> u32 {
+    pub const fn height(self) -> u32 {
         self.0[1]
     }
 
     /// Get tiles count
     #[inline]
-    pub fn count(self) -> usize {
+    pub const fn count(self) -> usize {
         let [w, h] = self.0;
         (w * h) as usize
     }

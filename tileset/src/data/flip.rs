@@ -21,13 +21,13 @@ pub enum Flip {
 impl Flip {
     /// Return true if the tile is flipped horizontally
     #[inline]
-    pub fn horizontal(self) -> bool {
+    pub const fn horizontal(self) -> bool {
         matches!(self, Self::Horizontal | Self::Both)
     }
 
     /// Return true if the tile is flipped vertically
     #[inline]
-    pub fn vertical(self) -> bool {
+    pub const fn vertical(self) -> bool {
         matches!(self, Self::Vertical | Self::Both)
     }
 }
