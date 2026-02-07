@@ -31,3 +31,6 @@ image = { version = "0.25", features = ["bmp", "png"] }
 
 # Load Aseprite file
 asefile = "0.3"
+
+# Load Tiled file
+tiled = "0.15"

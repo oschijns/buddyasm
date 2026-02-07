@@ -19,15 +19,13 @@ pub struct InputStack {
     pub(crate) stack: Vec<(PathBuf, InputImage, PaletteSetRgba)>,
 }
 
-/// Define one element to process
-/// Either a static image or an animated sprite
+/// Define one element to process.
+/// It can be a simple image to convert into tiles, or a font to embed in the
+/// tileset or an animated sprite from Aseprite or a map made with Tiled.
 #[derive(Debug)]
 pub enum InputImage {
     /// static image
     Static(RgbaImage),
-
-    /// Animated image from Aseprite
-    Animated(Box<AsepriteFile>),
 
     /// static image with fixed target positions
     FixedPosition {
@@ -37,6 +35,15 @@ pub enum InputImage {
         /// Fixed mapping for the tiles
         mapping: Mapping,
     },
+
+    /// Animated sprite from Aseprite
+    Aseprite(Box<AsepriteFile>),
+
+    /// Tile set from Tiled
+    TiledTileset(Box<tiled::Tileset>),
+
+    /// Tile map made in Tiled
+    TiledMap(Box<tiled::Map>),
 }
 
 /// Define a configuration to process the input images

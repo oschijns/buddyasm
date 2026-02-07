@@ -55,6 +55,10 @@ pub struct MapRange {
 /// Error encountered when loading an input stack config
 #[derive(thiserror::Error, Debug)]
 pub enum InputStackError {
+    /// Missing file extension
+    #[error("Failed to identify file type \"{0}\"")]
+    FileExt(PathBuf),
+
     /// Failed loading a palette
     #[error("Failed to load palette at path \"{0}\": {1}")]
     Palette(PathBuf, ImageError),
@@ -66,6 +70,14 @@ pub enum InputStackError {
     /// Failed loading an aseprite file
     #[error("Failed loading Aseprite file \"{0}\": {1}")]
     Aseprite(PathBuf, AsepriteParseError),
+
+    /// Failed loading an TSX file
+    #[error("Failed loading Tiled TSX file \"{0}\": {1}")]
+    TiledTSX(PathBuf, tiled::Error),
+
+    /// Failed loading an TMX file
+    #[error("Failed loading Tiled TMX file \"{0}\": {1}")]
+    TiledTMX(PathBuf, tiled::Error),
 }
 
 /// Load an input stack from the provided config
@@ -88,6 +100,9 @@ impl TryFrom<Manifest> for InputStack {
             }
         };
 
+        // Create a loader for tiled files
+        let mut tiled_loader = tiled::Loader::new();
+
         // Build a stack from the provided entries
         let mut stack = Vec::with_capacity(value.entries.len());
 
@@ -95,17 +110,41 @@ impl TryFrom<Manifest> for InputStack {
         for entry in value.entries.iter() {
             let path = &entry.image;
 
+            // Get the extension of the file
+            let Some(ext) = path.extension() else {
+                errors.push(InputStackError::FileExt(path.clone()));
+                continue;
+            };
+
             // Check if it is an aseprite file
-            if let Some(ext) = path.extension()
-                && ext.eq_ignore_ascii_case("aseprite")
-            {
+            if ext.eq_ignore_ascii_case("aseprite") {
                 match AsepriteFile::read_file(path) {
                     Ok(image) => {
-                        let image = InputImage::Animated(Box::new(image));
+                        let image = InputImage::Aseprite(Box::new(image));
                         stack.push((path.clone(), image, palette.clone()));
                     }
                     Err(err) => {
                         errors.push(InputStackError::Aseprite(path.clone(), err));
+                    }
+                }
+            } else if ext.eq_ignore_ascii_case("tsx") {
+                match tiled_loader.load_tsx_tileset(path) {
+                    Ok(tileset) => {
+                        let image = InputImage::TiledTileset(Box::new(tileset));
+                        stack.push((path.clone(), image, palette.clone()));
+                    }
+                    Err(err) => {
+                        errors.push(InputStackError::TiledTSX(path.clone(), err));
+                    }
+                }
+            } else if ext.eq_ignore_ascii_case("tmx") {
+                match tiled_loader.load_tmx_map(path) {
+                    Ok(map) => {
+                        let image = InputImage::TiledMap(Box::new(map));
+                        stack.push((path.clone(), image, palette.clone()));
+                    }
+                    Err(err) => {
+                        errors.push(InputStackError::TiledTMX(path.clone(), err));
                     }
                 }
             } else {
