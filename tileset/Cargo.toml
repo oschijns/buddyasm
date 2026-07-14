@@ -9,6 +9,17 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[features]
+default = ["binary"]
+
+# dependencies enabled when building the binary
+binary = ["dep:buddyasm_common"]
+
+[[bin]]
+name = "tileset"
+required-features = ["binary"]
+
+
 [dependencies]
 
 # Report errors when loading images
@@ -34,3 +45,6 @@ asefile = "0.3"
 
 # Load Tiled file
 tiled = "0.15"
+
+# Binary dependencies
+buddyasm_common = { path = "../common", optional = true }

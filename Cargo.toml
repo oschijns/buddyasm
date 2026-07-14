@@ -1,5 +1,11 @@
 [workspace]
-members = ["srcgen", "tileset", "translator"]
+members = [
+    "common",
+    "text",
+    "srcgen",
+    "tileset",
+    "translator",
+]
 resolver = "2"
 
 [workspace.package]

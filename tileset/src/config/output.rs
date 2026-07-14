@@ -8,10 +8,10 @@ use std::{collections::HashMap, path::PathBuf, rc::Rc};
 #[derive(Debug)]
 pub struct OutputStack {
     /// Generated tileset
-    pub(crate) tileset: TileSet,
+    pub tileset: TileSet,
 
     /// Associated index maps
-    pub(crate) images: HashMap<PathBuf, OutputImage>,
+    pub images: HashMap<PathBuf, OutputImage>,
 }
 
 /// Result of processing a single image from the stack

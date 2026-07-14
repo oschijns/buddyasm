@@ -32,7 +32,7 @@ impl Coords {
         let [sx, sy] = size.0;
         let px = tx * sx;
         let py = ty * sy;
-        [px, py, px + sx, py + sy]
+        [px, py, sx, sy]
     }
 }
 

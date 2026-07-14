@@ -5,13 +5,18 @@ use crate::{
     data::{coords::Dimensions, mapping::Mapping, palette::PaletteSetRgba},
 };
 use asefile::{AsepriteFile, AsepriteParseError};
+use buddyasm_common::manifest::Manifest;
 use image::{ImageError, open};
 use serde::Deserialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Configuration of the input stack to process
 #[derive(Debug, Clone, Deserialize)]
-pub struct Manifest {
+pub struct TileSetManifest {
+    /// Absolute path to this manifest file
+    #[serde(default)]
+    path: PathBuf,
+
     /// Tileset configuration
     pub(crate) config: BuilderConfig,
 
@@ -19,7 +24,7 @@ pub struct Manifest {
     pub(crate) default_palette: PathBuf,
 
     /// Entries to process
-    #[serde(flatten)]
+    #[serde(alias = "entry")]
     pub(crate) entries: Vec<Entry>,
 }
 
@@ -81,21 +86,22 @@ pub enum InputStackError {
 }
 
 /// Load an input stack from the provided config
-impl TryFrom<Manifest> for InputStack {
+impl TryFrom<TileSetManifest> for InputStack {
     type Error = Vec<InputStackError>;
 
-    fn try_from(value: Manifest) -> Result<Self, Self::Error> {
+    fn try_from(value: TileSetManifest) -> Result<Self, Self::Error> {
         let tile_size = value.config.tile_size();
 
         // Collect errors encountered
         let mut errors = Vec::with_capacity(value.entries.len());
 
         // Load the default palette
-        let palette = match PaletteSetRgba::load_palette(&value.default_palette) {
+        let path = value.evaluate_path(&value.default_palette);
+        let palette = match PaletteSetRgba::load_palette(&path) {
             Ok(palette) => palette,
             Err(err) => {
                 // Without a default palette, we cannot do much => stop here
-                errors.push(InputStackError::Palette(value.default_palette, err));
+                errors.push(InputStackError::Palette(path, err));
                 return Err(errors);
             }
         };
@@ -108,7 +114,7 @@ impl TryFrom<Manifest> for InputStack {
 
         // Process the entries
         for entry in value.entries.iter() {
-            let path = &entry.image;
+            let path = value.evaluate_path(&entry.image);
 
             // Get the extension of the file
             let Some(ext) = path.extension() else {
@@ -118,7 +124,7 @@ impl TryFrom<Manifest> for InputStack {
 
             // Check if it is an aseprite file
             if ext.eq_ignore_ascii_case("aseprite") {
-                match AsepriteFile::read_file(path) {
+                match AsepriteFile::read_file(&path) {
                     Ok(image) => {
                         let image = InputImage::Aseprite(Box::new(image));
                         stack.push((path.clone(), image, palette.clone()));
@@ -128,7 +134,7 @@ impl TryFrom<Manifest> for InputStack {
                     }
                 }
             } else if ext.eq_ignore_ascii_case("tsx") {
-                match tiled_loader.load_tsx_tileset(path) {
+                match tiled_loader.load_tsx_tileset(&path) {
                     Ok(tileset) => {
                         let image = InputImage::TiledTileset(Box::new(tileset));
                         stack.push((path.clone(), image, palette.clone()));
@@ -138,7 +144,7 @@ impl TryFrom<Manifest> for InputStack {
                     }
                 }
             } else if ext.eq_ignore_ascii_case("tmx") {
-                match tiled_loader.load_tmx_map(path) {
+                match tiled_loader.load_tmx_map(&path) {
                     Ok(map) => {
                         let image = InputImage::TiledMap(Box::new(map));
                         stack.push((path.clone(), image, palette.clone()));
@@ -149,7 +155,7 @@ impl TryFrom<Manifest> for InputStack {
                 }
             } else {
                 // evaluate the number of entries to generate
-                match open(&entry.image) {
+                match open(&path) {
                     Ok(image) => {
                         // We only handle RGBA images
                         let image = image.to_rgba8();
@@ -175,14 +181,14 @@ impl TryFrom<Manifest> for InputStack {
 
         // Check if we encountered errors
         if errors.is_empty() {
-            Err(errors)
-        } else {
             // Complete the stack
             Ok(Self {
                 config: value.config,
                 palette,
                 stack,
             })
+        } else {
+            Err(errors)
         }
     }
 }
@@ -192,5 +198,18 @@ impl MapRange {
     #[inline]
     pub fn size(&self) -> usize {
         self.end.saturating_sub(self.start)
+    }
+}
+
+impl Manifest for TileSetManifest {
+    /// Path to the directory containing this manifest file
+    fn set_path(&mut self, path: PathBuf) {
+        self.path = path;
+    }
+
+    /// Path to the directory containing this manifest file
+    #[inline]
+    fn get_path(&self) -> &Path {
+        &self.path
     }
 }

@@ -10,13 +10,13 @@ use std::path::PathBuf;
 #[derive(Debug)]
 pub struct InputStack {
     /// Configuration of the tileset to build
-    pub(crate) config: BuilderConfig,
+    pub config: BuilderConfig,
 
     /// Default palette to use if one is not explicitely set
-    pub(crate) palette: PaletteSetRgba,
+    pub palette: PaletteSetRgba,
 
     /// Stack of images to process
-    pub(crate) stack: Vec<(PathBuf, InputImage, PaletteSetRgba)>,
+    pub stack: Vec<(PathBuf, InputImage, PaletteSetRgba)>,
 }
 
 /// Define one element to process.
@@ -50,19 +50,19 @@ pub enum InputImage {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub struct BuilderConfig {
     /// Size of the tileset to produce
-    pub(crate) tile_count: usize,
+    pub tile_count: usize,
 
     /// With of a tile in pixels
-    pub(crate) tile_width: u32,
+    pub tile_width: u32,
 
     /// Height of a tile in pixels
-    pub(crate) tile_height: u32,
+    pub tile_height: u32,
 
     /// Specify wherever tiles can be flipped horizontally
-    pub(crate) flip_horizontal: bool,
+    pub flip_horizontal: bool,
 
     /// Specify wherever tiles can be flipped vertically
-    pub(crate) flip_vertical: bool,
+    pub flip_vertical: bool,
 }
 
 impl BuilderConfig {

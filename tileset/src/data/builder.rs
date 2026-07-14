@@ -51,14 +51,9 @@ pub enum TileError {
     OutOfBound(Coords),
 
     /// The given index is out of the boundaries of the target tileset
-    #[error("Given index {0} is out of bound")]
+    #[error("Given index 0x{0:4x} is out of bound")]
     InvalidIndex(usize),
 }
-
-/// Error encountered when trying to find a palette for a given tile
-#[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
-#[error("No matching palette for the tile")]
-pub struct NoPaletteMatchError;
 
 impl TileMapBuilder {
     /// Create a builder with the provided config

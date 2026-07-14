@@ -1,1 +1,5 @@
+# Ignore Cargo target folder
 /target
+
+# Ignore generated charset
+/output
