@@ -28,7 +28,7 @@ impl Mapping {
         for range in ranges.iter() {
             for i in range.start..range.end {
                 let c = dimensions.to_coords(i);
-                out.insert(c, range.target + i);
+                out.insert(c, range.target + (i - range.start));
             }
         }
 

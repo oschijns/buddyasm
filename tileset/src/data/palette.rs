@@ -147,6 +147,6 @@ const fn black_luma8() -> Luma<u8> {
 
 /// Convert image coordinates into ndarray coordinates
 #[inline]
-fn to_index(x: u32, y: u32) -> Ix2 {
+pub(crate) fn to_index(x: u32, y: u32) -> Ix2 {
     Ix2(x as Ix, y as Ix)
 }

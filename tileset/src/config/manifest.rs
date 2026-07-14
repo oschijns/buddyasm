@@ -21,7 +21,7 @@ pub struct TileSetManifest {
     path: PathBuf,
 
     /// Main configuration
-    pub(crate) config: Config,
+    pub config: Config,
 
     /// Entries to process
     #[serde(alias = "entry")]
@@ -32,17 +32,21 @@ pub struct TileSetManifest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     /// Target hardware
-    pub(crate) hardware: Hardware,
+    pub hardware: Hardware,
 
     /// Type of tiles to generate
-    pub(crate) kind: TileKind,
+    pub kind: TileKind,
 
     /// Sprite size parameter (if necessary)
     #[serde(default)]
-    pub(crate) sprite_size: Option<String>,
+    pub sprite_size: Option<String>,
+
+    /// Bit plane configuration (if necessary)
+    #[serde(default)]
+    pub bit_plane: Option<String>,
 
     /// Default palette to use
-    pub(crate) default_palette: PathBuf,
+    pub default_palette: PathBuf,
 }
 
 /// An input image to load

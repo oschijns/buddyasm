@@ -5,16 +5,31 @@ use buddyasm_common::{
     clap::{self, Parser},
     manifest::load_manifest,
 };
-use buddyasm_tileset::prelude::*;
+use buddyasm_tileset::{
+    prelude::*,
+    serial::{SerialTile, profile::Serial},
+};
+use image::EncodableLayout;
 use std::{
     collections::{BTreeMap, HashMap},
     ffi::OsString,
+    fs::File,
+    io::Write,
+    path::Path,
 };
 
 fn main() -> Result<(), anyhow::Error> {
     // Read command-line arguments
     let args = Cli::parse();
     let manifest = load_manifest::<TileSetManifest, _>(&args.manifest)?;
+
+    // Create the serializer for the processed tilesets
+    let serial = Serial::new(
+        manifest.config.hardware,
+        manifest.config.bit_plane.as_deref(),
+    )?;
+
+    // Create the input stack to process
     let input = match InputStack::try_from(manifest) {
         Ok(input) => input,
         Err(errors) => {
@@ -38,7 +53,7 @@ fn main() -> Result<(), anyhow::Error> {
     for (path, input_image, palette) in input.stack.iter() {
         match input_image {
             // Input is a common static image
-            InputImage::Static(image_buffer) => match builder.process(image_buffer, palette) {
+            InputImage::Static(image) => match builder.process(image, palette) {
                 Ok(index) => {
                     output_images.insert(path.clone(), OutputImage::Static(index));
                 }
@@ -55,7 +70,7 @@ fn main() -> Result<(), anyhow::Error> {
                     }
                 }
             }
-            InputImage::Aseprite(aseprite_file) => todo!("Aseprite files not yet supported"),
+            InputImage::Aseprite(aseprite) => todo!("Aseprite files not yet supported"),
             InputImage::TiledTileset(tileset) => todo!("Tiled files not yet supported"),
             InputImage::TiledMap(map) => todo!("Tiled files not yet supported"),
         }
@@ -66,6 +81,12 @@ fn main() -> Result<(), anyhow::Error> {
         tileset: builder.complete(),
         images: output_images,
     };
+
+    // serialize the result
+    let bits = serial.serialize(&output.tileset);
+    let out_path = Path::new(&args.output).to_path_buf().canonicalize()?;
+    let mut file = File::create(out_path.join("tileset.chr"))?;
+    file.write_all(bits.as_bytes())?;
 
     Ok(())
 }

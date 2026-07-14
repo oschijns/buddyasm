@@ -25,6 +25,9 @@ pub struct TileMapBuilder {
     /// Configuration of this builder
     config: BuilderConfig,
 
+    /// Empty tile to complete the tileset
+    empty_tile: Tile,
+
     /// For a given index, keep track of the tile associated with it
     index_to_tile: HashMap<usize, Tile>,
 
@@ -64,6 +67,7 @@ impl TileMapBuilder {
         vacancy.resize(capacity, true);
         Self {
             config,
+            empty_tile: Tile::new_empty(config.tile_width, config.tile_height),
             index_to_tile: HashMap::with_capacity(capacity),
             tile_to_index: HashMap::with_capacity(capacity),
             vacancy,
@@ -115,15 +119,15 @@ impl TileMapBuilder {
 
     /// Complete the tileset to be usable
     pub fn complete(&self) -> TileSet {
-        let empty = Tile::default();
         let count = self.config.tile_count;
 
         // Fill the final tileset
         let mut tileset = Vec::with_capacity(count);
         for index in 0..count {
-            let tile = self.index_to_tile.get(&index).unwrap_or(&empty);
+            let tile = self.index_to_tile.get(&index).unwrap_or(&self.empty_tile);
             tileset.push(tile.clone());
         }
+
         TileSet::new(tileset)
     }
 

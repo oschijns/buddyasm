@@ -34,10 +34,12 @@ pub enum SpriteNintendo1 {
     /// Small 8x8 sprite
     #[default]
     #[serde(rename = "8x8")]
+    #[strum(serialize = "8x8")]
     S8x8,
 
     /// Larger 8x16 sprite
     #[serde(rename = "8x16")]
+    #[strum(serialize = "8x16")]
     S8x16,
 }
 
@@ -48,18 +50,22 @@ pub enum SpriteNintendo2 {
     /// 8x8 sprite
     #[default]
     #[serde(rename = "8x8")]
+    #[strum(serialize = "8x8")]
     S8x8,
 
     /// 16x16 sprite
     #[serde(rename = "16x16")]
+    #[strum(serialize = "16x16")]
     S16x16,
 
     /// 32x32 sprite
     #[serde(rename = "32x32")]
+    #[strum(serialize = "32x32")]
     S32x32,
 
     /// 64x64 sprite
     #[serde(rename = "64x64")]
+    #[strum(serialize = "64x64")]
     S64x64,
 }
 
@@ -70,34 +76,42 @@ pub enum SpritePcEngine {
     /// 16x16 sprite
     #[default]
     #[serde(rename = "16x16")]
+    #[strum(serialize = "16x16")]
     S16x16,
 
     /// 16x32 sprite
     #[serde(rename = "16x32")]
+    #[strum(serialize = "16x32")]
     S16x32,
 
     /// 16x48 sprite
     #[serde(rename = "16x48")]
+    #[strum(serialize = "16x48")]
     S16x48,
 
     /// 16x64 sprite
     #[serde(rename = "16x64")]
+    #[strum(serialize = "16x64")]
     S16x64,
 
     /// 32x16 sprite
     #[serde(rename = "32x16")]
+    #[strum(serialize = "32x16")]
     S32x16,
 
     /// 32x32 sprite
     #[serde(rename = "32x32")]
+    #[strum(serialize = "32x32")]
     S32x32,
 
     /// 32x48 sprite
     #[serde(rename = "32x48")]
+    #[strum(serialize = "32x48")]
     S32x48,
 
     /// 32x64 sprite
     #[serde(rename = "32x64")]
+    #[strum(serialize = "32x64")]
     S32x64,
 }
 
@@ -108,38 +122,47 @@ pub enum SpriteNeoGeoPocket {
     /// 8x8 sprite
     #[default]
     #[serde(rename = "8x8")]
+    #[strum(serialize = "8x8")]
     S8x8,
 
     /// 8x16 sprite
     #[serde(rename = "8x16")]
+    #[strum(serialize = "8x16")]
     S8x16,
 
     /// 8x32 sprite
     #[serde(rename = "8x32")]
+    #[strum(serialize = "8x32")]
     S8x32,
 
     /// 16x8 sprite
     #[serde(rename = "16x8")]
+    #[strum(serialize = "16x8")]
     S16x8,
 
     /// 16x16 sprite
     #[serde(rename = "16x16")]
+    #[strum(serialize = "16x16")]
     S16x16,
 
     /// 16x32 sprite
     #[serde(rename = "16x32")]
+    #[strum(serialize = "16x32")]
     S16x32,
 
     /// 32x8 sprite
     #[serde(rename = "32x8")]
+    #[strum(serialize = "32x8")]
     S32x8,
 
     /// 32x16 sprite
     #[serde(rename = "32x16")]
+    #[strum(serialize = "32x16")]
     S32x16,
 
     /// 32x32 sprite
     #[serde(rename = "32x32")]
+    #[strum(serialize = "32x32")]
     S32x32,
 }
 
@@ -150,10 +173,12 @@ pub enum SpriteSegaMS {
     /// Small 8x8 sprite
     #[default]
     #[serde(rename = "8x8")]
+    #[strum(serialize = "8x8")]
     S8x8,
 
     /// Larger 8x16 sprite
     #[serde(rename = "8x16")]
+    #[strum(serialize = "8x16")]
     S8x16,
 }
 
@@ -164,18 +189,22 @@ pub enum SpriteSegaMD {
     /// 8x8 sprite
     #[default]
     #[serde(rename = "8x8")]
+    #[strum(serialize = "8x8")]
     S8x8,
 
     /// 16x16 sprite
     #[serde(rename = "16x16")]
+    #[strum(serialize = "16x16")]
     S16x16,
 
     /// 24x24 sprite
     #[serde(rename = "24x24")]
+    #[strum(serialize = "24x24")]
     S24x24,
 
     /// 32x32 sprite
     #[serde(rename = "32x32")]
+    #[strum(serialize = "32x32")]
     S32x32,
 }
 

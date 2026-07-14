@@ -1,6 +1,6 @@
 //! Tile and TileSet
 
-use crate::data::flip::Flip;
+use crate::data::{flip::Flip, palette::to_index};
 use core::hash::{Hash, Hasher};
 use ndarray::{Array2, Axis};
 use std::rc::Rc;
@@ -46,6 +46,12 @@ impl Tile {
     #[inline]
     pub fn new(data: Array2<Pix>) -> Self {
         Self(Rc::new(data))
+    }
+
+    /// Create a new empty tile
+    #[inline]
+    pub fn new_empty(w: u32, h: u32) -> Self {
+        Self(Rc::new(Array2::zeros(to_index(w, h))))
     }
 
     /// Get the number of pixels in this tile
