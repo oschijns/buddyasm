@@ -1,7 +1,10 @@
 //! Structure of the manifest file describing all the elements to load and process.
 
 use crate::{
-    config::input::{BuilderConfig, InputImage, InputStack},
+    config::{
+        input::{InputImage, InputStack},
+        profile::{Hardware, Profile, TileKind, ToConfig},
+    },
     data::{coords::Dimensions, mapping::Mapping, palette::PaletteSetRgba},
 };
 use asefile::{AsepriteFile, AsepriteParseError};
@@ -17,15 +20,29 @@ pub struct TileSetManifest {
     #[serde(default)]
     path: PathBuf,
 
-    /// Tileset configuration
-    pub(crate) config: BuilderConfig,
-
-    /// Default palette to use
-    pub(crate) default_palette: PathBuf,
+    /// Main configuration
+    pub(crate) config: Config,
 
     /// Entries to process
     #[serde(alias = "entry")]
     pub(crate) entries: Vec<Entry>,
+}
+
+/// Configure main components such as default palette and target hardware
+#[derive(Debug, Clone, Deserialize)]
+pub struct Config {
+    /// Target hardware
+    pub(crate) hardware: Hardware,
+
+    /// Type of tiles to generate
+    pub(crate) kind: TileKind,
+
+    /// Sprite size parameter (if necessary)
+    #[serde(default)]
+    pub(crate) sprite_size: Option<String>,
+
+    /// Default palette to use
+    pub(crate) default_palette: PathBuf,
 }
 
 /// An input image to load
@@ -90,13 +107,20 @@ impl TryFrom<TileSetManifest> for InputStack {
     type Error = Vec<InputStackError>;
 
     fn try_from(value: TileSetManifest) -> Result<Self, Self::Error> {
-        let tile_size = value.config.tile_size();
+        let profile = Profile::new(
+            value.config.hardware,
+            value.config.kind,
+            value.config.sprite_size.as_deref(),
+        )
+        .expect("Invalid config in hardware specification");
+        let config = profile.to_config();
+        let tile_size = config.tile_size();
 
         // Collect errors encountered
         let mut errors = Vec::with_capacity(value.entries.len());
 
         // Load the default palette
-        let path = value.evaluate_path(&value.default_palette);
+        let path = value.evaluate_path(&value.config.default_palette);
         let palette = match PaletteSetRgba::load_palette(&path) {
             Ok(palette) => palette,
             Err(err) => {
@@ -183,7 +207,7 @@ impl TryFrom<TileSetManifest> for InputStack {
         if errors.is_empty() {
             // Complete the stack
             Ok(Self {
-                config: value.config,
+                config,
                 palette,
                 stack,
             })

@@ -28,6 +28,9 @@ thiserror.workspace = true
 # Serialize & deserialize data
 serde.workspace = true
 
+# Map enums with strings
+strum = { version = "0.28", features = ["derive"] }
+
 # Process matrix data
 ndarray = { version = "0.17", features = ["rayon"] }
 itertools = "0.14"

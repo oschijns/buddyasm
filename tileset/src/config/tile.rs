@@ -1,7 +1,10 @@
 //! Define sprites configuration
 
+use std::str::FromStr;
+
 use crate::data::coords::TileSize;
 use serde::Deserialize;
+use strum::EnumString;
 
 /// Get the size of the sprite from the config selected
 pub trait TileConfig {
@@ -26,7 +29,7 @@ pub struct FgSprite<const SIZE: u32 = 8>;
 
 /// Sprite modes supported by the Famicom / GameBoy
 #[repr(C)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, EnumString)]
 pub enum SpriteNintendo1 {
     /// Small 8x8 sprite
     #[default]
@@ -40,7 +43,7 @@ pub enum SpriteNintendo1 {
 
 /// Sprite modes supported by the Super Famicom / Virtual Boy
 #[repr(C)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, EnumString)]
 pub enum SpriteNintendo2 {
     /// 8x8 sprite
     #[default]
@@ -62,7 +65,7 @@ pub enum SpriteNintendo2 {
 
 /// Sprite modes supported by the PC-Engine
 #[repr(C)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, EnumString)]
 pub enum SpritePcEngine {
     /// 16x16 sprite
     #[default]
@@ -100,7 +103,7 @@ pub enum SpritePcEngine {
 
 /// Sprite modes supported by the NeoGeo Pocket
 #[repr(C)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, EnumString)]
 pub enum SpriteNeoGeoPocket {
     /// 8x8 sprite
     #[default]
@@ -142,7 +145,7 @@ pub enum SpriteNeoGeoPocket {
 
 /// Sprite modes supported by the SEGA Master System
 #[repr(C)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, EnumString)]
 pub enum SpriteSegaMS {
     /// Small 8x8 sprite
     #[default]
@@ -156,7 +159,7 @@ pub enum SpriteSegaMS {
 
 /// Sprite modes supported by the SEGA MegaDrive
 #[repr(C)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, EnumString)]
 pub enum SpriteSegaMD {
     /// 8x8 sprite
     #[default]
@@ -176,6 +179,11 @@ pub enum SpriteSegaMD {
     S32x32,
 }
 
+/// Error encountered when we could not identify a sprite format based on provided string
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("Could not identify sprite size from \"{0}\"")]
+pub struct ParseError(pub(crate) String);
+
 /// Specify if we are processing tile or sprite data
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub enum TileOrSprite<T, S>
@@ -188,6 +196,44 @@ where
 
     /// Sprite data
     Sprite(S),
+}
+
+impl<T, S> TileOrSprite<T, S>
+where
+    T: Clone + PartialEq + Default,
+    S: Clone + PartialEq,
+{
+    /// We are making tiles
+    #[inline]
+    pub fn default_tile() -> Self {
+        Self::Tile(T::default())
+    }
+}
+
+impl<'s, T, S> TileOrSprite<T, S>
+where
+    T: Clone + PartialEq,
+    S: Clone + PartialEq + Default + FromStr,
+{
+    /// We are making sprites
+    #[inline]
+    pub fn default_sprite() -> Self {
+        Self::Sprite(S::default())
+    }
+
+    /// We are making sprites
+    #[inline]
+    pub fn sprite(sprite_size: Option<&'s str>) -> Result<Self, ParseError> {
+        if let Some(size) = sprite_size {
+            if let Ok(s) = S::from_str(size) {
+                Ok(Self::Sprite(s))
+            } else {
+                Err(ParseError(size.to_string()))
+            }
+        } else {
+            Ok(Self::Sprite(S::default()))
+        }
+    }
 }
 
 impl<const FLIP: bool> TileConfig for BgTile<FLIP> {

@@ -3,11 +3,12 @@
 use crate::config::{
     input::BuilderConfig,
     tile::{
-        BgTile, FgSprite, SpriteNeoGeoPocket, SpriteNintendo1, SpriteNintendo2, SpritePcEngine,
-        SpriteSegaMD, SpriteSegaMS, TileConfig, TileOrSprite,
+        BgTile, FgSprite, ParseError, SpriteNeoGeoPocket, SpriteNintendo1, SpriteNintendo2,
+        SpritePcEngine, SpriteSegaMD, SpriteSegaMS, TileConfig, TileOrSprite,
     },
 };
 use serde::Deserialize;
+use strum::EnumString;
 
 /// Get a builder configuration from the selected hardware profile
 pub trait ToConfig {
@@ -15,7 +16,62 @@ pub trait ToConfig {
 }
 
 /// List all hardware profiles available
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, EnumString)]
+#[serde(rename_all = "kebab-case")]
+pub enum Hardware {
+    /// Famicom / NES
+    #[serde(alias = "nes")]
+    Famicom,
+
+    /// Super Famicom / SNES
+    #[serde(alias = "snes")]
+    SuperFamicom,
+
+    /// Game Boy
+    #[serde(alias = "gameboy", alias = "gb")]
+    GameBoy,
+
+    /// Virtual Boy
+    #[serde(alias = "virtualboy", alias = "vb")]
+    VirtualBoy,
+
+    /// PC-Engine
+    #[serde(alias = "pc-engine", alias = "pce")]
+    PcEngine,
+
+    /// NeoGeo Pocket
+    #[serde(alias = "neogeo-pocket", alias = "ngp")]
+    NeoGeoPocket,
+
+    /// Wonder Swan
+    #[serde(alias = "wonderswan", alias = "ws")]
+    WonderSwan,
+
+    /// Master System
+    #[serde(alias = "mastersystem", alias = "sms")]
+    MasterSystem,
+
+    /// MegaDrive / Genesis
+    #[serde(alias = "megadrive", alias = "md")]
+    MegaDrive,
+}
+
+/// Are we generating background tiles or foreground tiles (sprites)
+#[derive(Debug, Deserialize, Clone, Copy)]
+#[serde(rename_all = "kebab-case")]
+pub enum TileKind {
+    /// Background tiles
+    #[serde(alias = "bg", alias = "nametable")]
+    Background,
+
+    /// Foreground tiles
+    #[serde(alias = "fg", alias = "sprite")]
+    Foreground,
+}
+
+/// List all hardware profiles available
+#[derive(Debug, Clone)]
 pub enum Profile {
     /// Famicom / NES
     Famicom(ProfileFamicom),
@@ -43,6 +99,76 @@ pub enum Profile {
 
     /// MegaDrive / Genesis
     MegaDrive(ProfileMegaDrive),
+}
+
+impl Profile {
+    /// Build a profile given the parameters
+    pub fn new(
+        hardware: Hardware,
+        kind: TileKind,
+        sprite_size: Option<&str>,
+    ) -> Result<Profile, ParseError> {
+        match kind {
+            TileKind::Background => match hardware {
+                Hardware::Famicom => Ok(Profile::Famicom(ProfileFamicom(
+                    TileOrSprite::default_tile(),
+                ))),
+                Hardware::SuperFamicom => Ok(Profile::SuperFamicom(ProfileSuperFamicom(
+                    TileOrSprite::default_tile(),
+                ))),
+                Hardware::GameBoy => Ok(Profile::GameBoy(ProfileGameBoy(
+                    TileOrSprite::default_tile(),
+                ))),
+                Hardware::VirtualBoy => Ok(Profile::VirtualBoy(ProfileVirtualBoy(
+                    TileOrSprite::default_tile(),
+                ))),
+                Hardware::PcEngine => Ok(Profile::PcEngine(ProfilePcEngine(
+                    TileOrSprite::default_tile(),
+                ))),
+                Hardware::NeoGeoPocket => Ok(Profile::NeoGeoPocket(ProfileNeoGeoPocket(
+                    TileOrSprite::default_tile(),
+                ))),
+                Hardware::WonderSwan => Ok(Profile::WonderSwan(ProfileWonderSwan(
+                    TileOrSprite::default_tile(),
+                ))),
+                Hardware::MasterSystem => Ok(Profile::MasterSystem(ProfileMasterSystem(
+                    TileOrSprite::default_tile(),
+                ))),
+                Hardware::MegaDrive => Ok(Profile::MegaDrive(ProfileMegaDrive(
+                    TileOrSprite::default_tile(),
+                ))),
+            },
+            TileKind::Foreground => match hardware {
+                Hardware::Famicom => Ok(Profile::Famicom(ProfileFamicom(TileOrSprite::sprite(
+                    sprite_size,
+                )?))),
+                Hardware::SuperFamicom => Ok(Profile::SuperFamicom(ProfileSuperFamicom(
+                    TileOrSprite::sprite(sprite_size)?,
+                ))),
+                Hardware::GameBoy => Ok(Profile::GameBoy(ProfileGameBoy(TileOrSprite::sprite(
+                    sprite_size,
+                )?))),
+                Hardware::VirtualBoy => Ok(Profile::VirtualBoy(ProfileVirtualBoy(
+                    TileOrSprite::sprite(sprite_size)?,
+                ))),
+                Hardware::PcEngine => Ok(Profile::PcEngine(ProfilePcEngine(TileOrSprite::sprite(
+                    sprite_size,
+                )?))),
+                Hardware::NeoGeoPocket => Ok(Profile::NeoGeoPocket(ProfileNeoGeoPocket(
+                    TileOrSprite::sprite(sprite_size)?,
+                ))),
+                Hardware::WonderSwan => Ok(Profile::Famicom(ProfileFamicom(
+                    TileOrSprite::default_sprite(),
+                ))),
+                Hardware::MasterSystem => Ok(Profile::MasterSystem(ProfileMasterSystem(
+                    TileOrSprite::sprite(sprite_size)?,
+                ))),
+                Hardware::MegaDrive => Ok(Profile::MegaDrive(ProfileMegaDrive(
+                    TileOrSprite::sprite(sprite_size)?,
+                ))),
+            },
+        }
+    }
 }
 
 /// Famicom Profile
