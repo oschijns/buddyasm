@@ -1,19 +1,21 @@
 //! Define hardware profile for serializing the tile data
 
-use std::str::FromStr;
-
 use crate::{
     config::{profile::Hardware, tile::ParseError},
     data::tile::TileSet,
     serial::{
         SerialTile,
         endian::{bits_to_u16_be, bits_to_u16_le, bits_to_u32_be},
-        strategy::{SerialLinear, SerialMono, SerialRowIntertwine, SerialSplit, SerialStrategy},
+        strategy::{
+            SerialInterleave, SerialLinear, SerialMono, SerialRowIntertwine, SerialRowSplit,
+            SerialStrategy, SerialTileSplit,
+        },
     },
 };
 use bitvec::{order::Lsb0, vec::BitVec};
 use bytes::Bytes;
 use serde::Deserialize;
+use std::str::FromStr;
 use strum::EnumString;
 
 /// List all hardware profiles available
@@ -151,6 +153,13 @@ pub struct SerialMasterSystem;
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct SerialMegaDrive;
 
+/*
+ * TODO:
+ * Rework serializer into two categories:
+ * bit packers (NES, SNES, GameBoy)
+ * pixel packers ()
+ */
+
 impl SerialTile for Serial {
     #[rustfmt::skip]
     fn serialize(&self, tileset: &TileSet) -> Bytes {
@@ -173,7 +182,7 @@ impl SerialTile for SerialFamicom {
     fn serialize(&self, tileset: &TileSet) -> Bytes {
         let bits: BitVec<u8, Lsb0> = match self {
             Self::Bpp1 => SerialMono.serialize(tileset),
-            Self::Bpp2 => SerialSplit::new(2).serialize(tileset),
+            Self::Bpp2 => SerialTileSplit::new(2).serialize(tileset),
         };
         Bytes::copy_from_slice(bits.as_raw_slice())
     }
@@ -183,9 +192,9 @@ impl SerialTile for SerialSuperFamicom {
     /// Serialize the tileset in a Super Famicom compatible layout
     fn serialize(&self, tileset: &TileSet) -> Bytes {
         let bits: BitVec<u8, Lsb0> = match self {
-            Self::Bpp2 => SerialRowIntertwine::new(2, 2).serialize(tileset),
-            Self::Bpp4 => SerialRowIntertwine::new(4, 2).serialize(tileset),
-            Self::Bpp8 => SerialRowIntertwine::new(8, 2).serialize(tileset),
+            Self::Bpp2 => SerialTileSplit::new(2).serialize(tileset),
+            Self::Bpp4 => SerialInterleave::new(4).serialize(tileset),
+            Self::Bpp8 => SerialInterleave::new(8).serialize(tileset),
             Self::Mode7 => SerialLinear::new(8).serialize(tileset),
         };
         Bytes::copy_from_slice(bits.as_raw_slice())
@@ -195,7 +204,7 @@ impl SerialTile for SerialSuperFamicom {
 impl SerialTile for SerialGameBoy {
     /// Serialize the tileset in a GameBoy compatible layout
     fn serialize(&self, tileset: &TileSet) -> Bytes {
-        let bits: BitVec<u8, Lsb0> = SerialRowIntertwine::new(2, 2).serialize(tileset);
+        let bits: BitVec<u8, Lsb0> = SerialRowSplit::new(2).serialize(tileset);
         Bytes::copy_from_slice(bits.as_raw_slice())
     }
 }

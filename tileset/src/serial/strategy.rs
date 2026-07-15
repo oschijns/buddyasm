@@ -2,6 +2,7 @@
 
 use crate::data::tile::TileSet;
 use bitvec::{order::BitOrder, store::BitStore, vec::BitVec};
+use itertools::Itertools;
 
 /// Define a serialization strategy for the tileset
 pub(crate) trait SerialStrategy<T, O>
@@ -22,7 +23,25 @@ pub struct SerialLinear {
 }
 
 /// Serialize the tileset as distinct bitplanes
-pub struct SerialSplit {
+pub struct SerialPlaneSplit {
+    /// How many bits are used to define a pixel
+    pub(crate) bits_per_pixel: usize,
+}
+
+/// Serialize the tileset by splitting each tile
+pub struct SerialTileSplit {
+    /// How many bits are used to define a pixel
+    pub(crate) bits_per_pixel: usize,
+}
+
+/// Serialize the tileset by splitting each row
+pub struct SerialRowSplit {
+    /// How many bits are used to define a pixel
+    pub(crate) bits_per_pixel: usize,
+}
+
+/// Serialize the tileset by serializing pairs of bit planes
+pub struct SerialInterleave {
     /// How many bits are used to define a pixel
     pub(crate) bits_per_pixel: usize,
 }
@@ -44,8 +63,32 @@ impl SerialLinear {
     }
 }
 
-impl SerialSplit {
+impl SerialPlaneSplit {
     /// Define splitted bitplane layout serialization
+    #[inline]
+    pub const fn new(bits_per_pixel: usize) -> Self {
+        Self { bits_per_pixel }
+    }
+}
+
+impl SerialTileSplit {
+    /// Define splitted tiles layout serialization
+    #[inline]
+    pub const fn new(bits_per_pixel: usize) -> Self {
+        Self { bits_per_pixel }
+    }
+}
+
+impl SerialRowSplit {
+    /// Define splitted rows layout serialization
+    #[inline]
+    pub const fn new(bits_per_pixel: usize) -> Self {
+        Self { bits_per_pixel }
+    }
+}
+
+impl SerialInterleave {
+    /// Define interleave layout serialization
     #[inline]
     pub const fn new(bits_per_pixel: usize) -> Self {
         Self { bits_per_pixel }
@@ -111,7 +154,7 @@ where
     }
 }
 
-impl<T, O> SerialStrategy<T, O> for SerialSplit
+impl<T, O> SerialStrategy<T, O> for SerialPlaneSplit
 where
     T: BitStore,
     O: BitOrder,
@@ -131,6 +174,101 @@ where
                 for &pix in tile.0.iter() {
                     // Store the bit of the bitplane
                     serial.push(pix & mask != 0);
+                }
+            }
+        }
+
+        serial
+    }
+}
+
+impl<T, O> SerialStrategy<T, O> for SerialTileSplit
+where
+    T: BitStore,
+    O: BitOrder,
+{
+    /// Serialize the tileset as multiple bitplanes
+    fn serialize(&self, tileset: &TileSet) -> BitVec<T, O> {
+        // The serialization to produce
+        let mut serial = BitVec::<T, O>::with_capacity(tileset.pixel_count() * self.bits_per_pixel);
+
+        // iterate over each tile
+        for tile in tileset.0.iter() {
+            // for each bitplane to serialize
+            for plane in 0..self.bits_per_pixel {
+                let mask = 1 << plane;
+
+                // iterate over each pixel of the tile
+                for &pix in tile.0.iter() {
+                    // Store the bit of the bitplane
+                    serial.push(pix & mask != 0);
+                }
+            }
+        }
+
+        serial
+    }
+}
+
+impl<T, O> SerialStrategy<T, O> for SerialRowSplit
+where
+    T: BitStore,
+    O: BitOrder,
+{
+    /// Serialize the tileset as multiple bitplanes
+    fn serialize(&self, tileset: &TileSet) -> BitVec<T, O> {
+        // The serialization to produce
+        let mut serial = BitVec::<T, O>::with_capacity(tileset.pixel_count() * self.bits_per_pixel);
+
+        // iterate over each tile
+        for tile in tileset.0.iter() {
+            for row in tile.0.rows() {
+                // for each bitplane to serialize
+                for plane in 0..self.bits_per_pixel {
+                    let mask = 1 << plane;
+
+                    // iterate over each pixel of the tile
+                    for &pix in row.iter() {
+                        // Store the bit of the bitplane
+                        serial.push(pix & mask != 0);
+                    }
+                }
+            }
+        }
+
+        serial
+    }
+}
+
+impl<T, O> SerialStrategy<T, O> for SerialInterleave
+where
+    T: BitStore,
+    O: BitOrder,
+{
+    /// Serialize the tileset as multiple bitplanes
+    fn serialize(&self, tileset: &TileSet) -> BitVec<T, O> {
+        // The serialization to produce
+        let mut serial = BitVec::<T, O>::with_capacity(tileset.pixel_count() * self.bits_per_pixel);
+
+        // iterate over each tile
+        for tile in tileset.0.iter() {
+            // for each bitplane to serialize
+            for plane_pair in (0..self.bits_per_pixel).step_by(2) {
+                for row in tile.0.rows() {
+                    let mask0 = 0b01 << plane_pair;
+                    let mask1 = 0b10 << plane_pair;
+
+                    // iterate over each pixel of the tile
+                    for &pix in row.iter() {
+                        // Store the bit of the bitplane
+                        serial.push(pix & mask0 != 0);
+                    }
+
+                    // iterate over each pixel of the tile
+                    for &pix in row.iter() {
+                        // Store the bit of the bitplane
+                        serial.push(pix & mask1 != 0);
+                    }
                 }
             }
         }

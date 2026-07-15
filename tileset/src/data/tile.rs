@@ -44,7 +44,10 @@ impl TileSet {
 impl Tile {
     /// Create a new tile from data
     #[inline]
-    pub fn new(data: Array2<Pix>) -> Self {
+    pub fn new(mut data: Array2<Pix>) -> Self {
+        // reorder pixels to be easier to serialize
+        data.reverse_axes();
+        data.invert_axis(Axis(1));
         Self(Rc::new(data))
     }
 
