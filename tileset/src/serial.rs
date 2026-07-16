@@ -1,6 +1,5 @@
 //! Serialize a tileset in the format expected by the target hardware
 
-pub mod endian;
 pub mod profile;
 pub mod strategy;
 

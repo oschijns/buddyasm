@@ -39,6 +39,7 @@ itertools = "0.14"
 bytes = "1.11"
 bitfield = "0.19"
 bitvec = "1.0"
+bytemuck = "1.25"
 
 # Load regular image formats
 image = { version = "0.25", features = ["bmp", "png"] }

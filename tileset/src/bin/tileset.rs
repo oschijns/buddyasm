@@ -26,6 +26,7 @@ fn main() -> Result<(), anyhow::Error> {
     // Create the serializer for the processed tilesets
     let serial = Serial::new(
         manifest.config.hardware,
+        manifest.config.kind,
         manifest.config.bit_plane.as_deref(),
     )?;
 

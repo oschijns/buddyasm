@@ -278,6 +278,7 @@ dependencies = [
  "bitfield",
  "bitvec",
  "buddyasm_common",
+ "bytemuck",
  "bytes",
  "image 0.25.10",
  "itertools",
