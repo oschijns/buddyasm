@@ -5,7 +5,7 @@
 hardware = "pc-engine"
 
 # Background or Foreground tileset
-kind = "bg"
+kind = "fg"
 
 # Default palette to use for processing the spritework
 default_palette = "palette.png"
@@ -16,4 +16,4 @@ default_palette = "palette.png"
 image = "font_vincent.png"
 
 # Pick all printable ASCII characters and place them at the expected location for ASCII characters
-mapping = [ { start = 0x20, end = 0x7F, target = 0x20 } ]
+mapping = [ { start = 0x0, end = 0x20, target = 0x0 } ]

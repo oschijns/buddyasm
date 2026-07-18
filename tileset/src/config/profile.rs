@@ -227,7 +227,10 @@ impl ToConfig for ProfileVirtualBoy {
 /// PC-Engine Config
 impl ToConfig for ProfilePcEngine {
     fn to_config(&self) -> BuilderConfig {
-        build_config(&self.0)
+        match self.0 {
+            TileOrSprite::Tile(_) => build_config(&self.0),
+            TileOrSprite::Sprite(_) => build_config_params(&self.0, 16, 256),
+        }
     }
 }
 
@@ -268,10 +271,18 @@ where
     const TILE_COUNT: usize = 256;
     const TILE_SIZE: u32 = 8;
 
+    build_config_params(tile_config, TILE_SIZE, TILE_COUNT)
+}
+
+/// Build a config from the provided tile config and some standard values
+fn build_config_params<T>(tile_config: &T, tile_size: u32, tile_count: usize) -> BuilderConfig
+where
+    T: TileConfig,
+{
     let [flip_h, flip_v] = tile_config.flipping();
     let [px, py] = tile_config.tile_size().0;
-    let tx = (px / TILE_SIZE) as usize;
-    let ty = (py / TILE_SIZE) as usize;
+    let tx = (px / tile_size) as usize;
+    let ty = (py / tile_size) as usize;
 
-    BuilderConfig::new(TILE_COUNT / (tx * ty), px, py, flip_h, flip_v)
+    BuilderConfig::new(tile_count / (tx * ty), px, py, flip_h, flip_v)
 }

@@ -243,9 +243,7 @@ impl SerialTile for SerialPcEngine {
                 Bytes::copy_from_slice(bits.as_raw_slice())
             }
             Self::Sg => {
-                // https://www.chibiakumas.com/6502/platform4.php#LessonP33
-
-                let bits: BitVec<u32, Msb0> = SerialRowSplit::new(4).serialize(tileset);
+                let bits: BitVec<u16, Lsb0> = SerialTileSplit::new(4).serialize(tileset);
                 Bytes::copy_from_slice(cast_slice(bits.as_raw_slice()))
             }
         }
