@@ -261,8 +261,18 @@ impl SerialTile for SerialNeoGeoPocket {
 impl SerialTile for SerialWonderSwan {
     /// Serialize the tileset in a WonderSwan compatible layout
     fn serialize(&self, tileset: &TileSet) -> Bytes {
-        let bits: BitVec<u8, Msb0> = SerialLinear::new(4).serialize(tileset);
-        Bytes::copy_from_slice(cast_slice(bits.as_raw_slice()))
+        let bits: BitVec<u32, Msb0> = SerialLinear::new(4).serialize(tileset);
+        let buffer = Bytes::copy_from_slice(cast_slice(bits.as_raw_slice()));
+
+        // Swap the nybbles of each byte
+        let mut wbuffer = BytesMut::with_capacity(buffer.len());
+        for &byte in buffer.iter() {
+            // swap the two nybbles
+            let wbyte = (byte >> 4) | (byte << 4);
+            wbuffer.put_u8(wbyte);
+        }
+
+        wbuffer.freeze()
     }
 }
 

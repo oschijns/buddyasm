@@ -17,3 +17,11 @@ image = "font_vincent.png"
 
 # Pick all printable ASCII characters and place them at the expected location for ASCII characters
 mapping = [ { start = 0x0, end = 0x20, target = 0x0 } ]
+
+[[entry]]
+
+# Load a sprite work
+image = "title.png"
+
+# Use a custom palette
+palette = "palette-title.png"

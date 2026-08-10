@@ -142,6 +142,21 @@ impl TryFrom<TileSetManifest> for InputStack {
 
         // Process the entries
         for entry in value.entries.iter() {
+            // Check if we have a palette override for this entry
+            let palette = if let Some(path_palette) = &entry.palette {
+                let path = value.evaluate_path(path_palette);
+                match PaletteSetRgba::load_palette(&path) {
+                    Ok(palette) => palette,
+                    Err(err) => {
+                        // Without a default palette, we cannot do much => stop here
+                        errors.push(InputStackError::Palette(path, err));
+                        return Err(errors);
+                    }
+                }
+            } else {
+                palette.clone()
+            };
+
             let path = value.evaluate_path(&entry.image);
 
             // Get the extension of the file
@@ -155,7 +170,7 @@ impl TryFrom<TileSetManifest> for InputStack {
                 match AsepriteFile::read_file(&path) {
                     Ok(image) => {
                         let image = InputImage::Aseprite(Box::new(image));
-                        stack.push((path.clone(), image, palette.clone()));
+                        stack.push((path.clone(), image, palette));
                     }
                     Err(err) => {
                         errors.push(InputStackError::Aseprite(path.clone(), err));
@@ -165,7 +180,7 @@ impl TryFrom<TileSetManifest> for InputStack {
                 match tiled_loader.load_tsx_tileset(&path) {
                     Ok(tileset) => {
                         let image = InputImage::TiledTileset(Box::new(tileset));
-                        stack.push((path.clone(), image, palette.clone()));
+                        stack.push((path.clone(), image, palette));
                     }
                     Err(err) => {
                         errors.push(InputStackError::TiledTSX(path.clone(), err));
@@ -175,7 +190,7 @@ impl TryFrom<TileSetManifest> for InputStack {
                 match tiled_loader.load_tmx_map(&path) {
                     Ok(map) => {
                         let image = InputImage::TiledMap(Box::new(map));
-                        stack.push((path.clone(), image, palette.clone()));
+                        stack.push((path.clone(), image, palette));
                     }
                     Err(err) => {
                         errors.push(InputStackError::TiledTMX(path.clone(), err));
@@ -198,7 +213,7 @@ impl TryFrom<TileSetManifest> for InputStack {
                             // Static image to process
                             InputImage::Static(image)
                         };
-                        stack.push((path.clone(), image, palette.clone()));
+                        stack.push((path.clone(), image, palette));
                     }
                     Err(err) => {
                         errors.push(InputStackError::Image(path.clone(), err));
