@@ -2,6 +2,7 @@
 
 use crate::data::{flip::Flip, tile::TileSet};
 use ndarray::Array2;
+use serde::{Deserialize, Serialize, ser::SerializeStruct};
 use std::{collections::HashMap, path::PathBuf, rc::Rc};
 
 /// TileSet generated and associated index maps
@@ -15,7 +16,7 @@ pub struct OutputStack {
 }
 
 /// Result of processing a single image from the stack
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OutputImage {
     /// Output a single static image
     Static(IndexMap),
@@ -25,7 +26,7 @@ pub enum OutputImage {
 }
 
 /// Store the data to reconstruct an animated sprite
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OutputAnimation {
     /// Produce a single animation
     Normal(IndexMap),
@@ -50,17 +51,17 @@ pub enum OutputAnimation {
 
     /// Produce variants for all four directions
     FourWays {
-        /// Left variant of the animation
-        left: IndexMap,
+        /// Up-Left variant of the animation
+        up_left: IndexMap,
 
-        /// RIght variant of the animation
-        right: IndexMap,
+        /// Up-Right variant of the animation
+        up_right: IndexMap,
 
-        /// Up variant of the animation
-        up: IndexMap,
+        /// Down-Left variant of the animation
+        down_left: IndexMap,
 
-        /// Down variant of the animation
-        down: IndexMap,
+        /// Down-Right variant of the animation
+        down_right: IndexMap,
     },
 }
 
@@ -69,7 +70,7 @@ pub enum OutputAnimation {
 pub struct IndexMap(pub(crate) Rc<Array2<IndexTile>>);
 
 /// Indexes to reconstruct the pictural data
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IndexTile {
     /// Index of the tile
     pub(crate) tile: usize,
@@ -98,5 +99,24 @@ impl IndexMap {
     #[inline]
     pub fn new(data: Array2<IndexTile>) -> Self {
         Self(Rc::new(data))
+    }
+}
+
+impl Serialize for IndexMap {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.as_ref().serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for IndexMap {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let data: Array2<IndexTile> = serde::Deserialize::deserialize(deserializer)?;
+        Ok(IndexMap::new(data))
     }
 }

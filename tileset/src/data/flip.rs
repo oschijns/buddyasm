@@ -1,8 +1,10 @@
 //! Flip
 
+use serde::{Deserialize, Serialize};
+
 /// Flipping axes
 #[repr(u8)]
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Flip {
     /// No flip
     #[default]

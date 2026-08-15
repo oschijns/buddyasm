@@ -109,6 +109,18 @@ fn main() -> Result<(), anyhow::Error> {
     let mut file = File::create(out_path.join("tileset.chr"))?;
     file.write_all(bits.as_bytes())?;
 
+    // serialize the output stack
+    for (path, image) in &output.images {
+        if let Some(filename) = path.file_stem() {
+            let mut path_file = out_path.join(filename);
+            path_file.set_extension("json");
+            let mut file = File::create(path_file)?;
+            serde_json::to_writer_pretty(&mut file, image)?;
+        } else {
+            panic!("Path should lead to a file thus it should have a filename");
+        }
+    }
+
     Ok(())
 }
 
