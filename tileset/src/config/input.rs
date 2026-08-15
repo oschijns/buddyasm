@@ -12,9 +12,6 @@ pub struct InputStack {
     /// Configuration of the tileset to build
     pub config: BuilderConfig,
 
-    /// Default palette to use if one is not explicitely set
-    pub palette: PaletteSetRgba,
-
     /// Stack of images to process
     pub stack: Vec<(PathBuf, InputImage, PaletteSetRgba)>,
 }

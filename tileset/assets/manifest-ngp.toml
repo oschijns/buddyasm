@@ -10,6 +10,10 @@ kind = "bg"
 # Default palette to use for processing the spritework
 default_palette = "palette.png"
 
+# Where to output the processed tileset
+output = "../../output/ngp"
+
+
 [[entry]]
 
 # Load a font file

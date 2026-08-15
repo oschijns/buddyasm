@@ -46,7 +46,18 @@ pub struct Config {
     pub bit_plane: Option<String>,
 
     /// Default palette to use
-    pub default_palette: PathBuf,
+    #[serde(default)]
+    pub default_palette: Option<PathBuf>,
+
+    /// Path to the output directory relative to the manifest file.
+    /// If not specified, defaults to `output` next to the manifest file.
+    #[serde(default)]
+    pub output: Option<PathBuf>,
+
+    /// Path to the CHR file.
+    /// If not specified, defaults to `tileset.chr` in the output directory.
+    #[serde(default)]
+    pub file_chr: Option<PathBuf>,
 }
 
 /// An input image to load
@@ -84,6 +95,10 @@ pub enum InputStackError {
     /// Missing file extension
     #[error("Failed to identify file type \"{0}\"")]
     FileExt(PathBuf),
+
+    /// No palette specified
+    #[error("No palette specified")]
+    NoPalette,
 
     /// Failed loading a palette
     #[error("Failed to load palette at path \"{0}\": {1}")]
@@ -124,14 +139,18 @@ impl TryFrom<TileSetManifest> for InputStack {
         let mut errors = Vec::with_capacity(value.entries.len());
 
         // Load the default palette
-        let path = value.evaluate_path(&value.config.default_palette);
-        let palette = match PaletteSetRgba::load_palette(&path) {
-            Ok(palette) => palette,
-            Err(err) => {
-                // Without a default palette, we cannot do much => stop here
-                errors.push(InputStackError::Palette(path, err));
-                return Err(errors);
+        let palette = if let Some(path) = &value.config.default_palette {
+            let path = value.evaluate_path(path);
+            match PaletteSetRgba::load_palette(&path) {
+                Ok(palette) => Some(palette),
+                Err(err) => {
+                    // Default palette is not valid
+                    errors.push(InputStackError::Palette(path, err));
+                    None
+                }
             }
+        } else {
+            None
         };
 
         // Create a loader for tiled files
@@ -148,13 +167,17 @@ impl TryFrom<TileSetManifest> for InputStack {
                 match PaletteSetRgba::load_palette(&path) {
                     Ok(palette) => palette,
                     Err(err) => {
-                        // Without a default palette, we cannot do much => stop here
+                        // Palette specified for entry is not valid
                         errors.push(InputStackError::Palette(path, err));
-                        return Err(errors);
+                        continue;
                     }
                 }
-            } else {
+            } else if let Some(palette) = &palette {
                 palette.clone()
+            } else {
+                // Without a default palette, is not valid
+                errors.push(InputStackError::NoPalette);
+                continue;
             };
 
             let path = value.evaluate_path(&entry.image);
@@ -225,11 +248,7 @@ impl TryFrom<TileSetManifest> for InputStack {
         // Check if we encountered errors
         if errors.is_empty() {
             // Complete the stack
-            Ok(Self {
-                config,
-                palette,
-                stack,
-            })
+            Ok(Self { config, stack })
         } else {
             Err(errors)
         }
