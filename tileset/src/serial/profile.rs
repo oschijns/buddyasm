@@ -9,8 +9,8 @@ use crate::{
     serial::{
         SerialTile,
         strategy::{
-            SerialInterleave, SerialLinear, SerialMono, SerialPlaneSplit, SerialRowSplit,
-            SerialStrategy, SerialTileSplit,
+            SerialInterleave, SerialLinear, SerialMono, SerialRowSplit, SerialStrategy,
+            SerialTileSplit,
         },
     },
 };
@@ -33,7 +33,7 @@ pub enum Serial {
     /// Super Famicom / SNES
     SuperFamicom(SerialSuperFamicom),
 
-    /// Game Boy
+    /// Game Boy & Game Boy Color
     GameBoy(SerialGameBoy),
 
     /// Virtual Boy
@@ -41,9 +41,6 @@ pub enum Serial {
 
     /// PC-Engine
     PcEngine(SerialPcEngine),
-
-    /// NeoGeo Pocket
-    NeoGeoPocket(SerialNeoGeoPocket),
 
     /// Wonder Swan
     WonderSwan(SerialWonderSwan),
@@ -53,25 +50,38 @@ pub enum Serial {
 
     /// MegaDrive / Genesis
     MegaDrive(SerialMegaDrive),
+
+    /// NeoGeo Pocket
+    NeoGeoPocket(SerialNeoGeoPocket),
+
+    /// NeoGeo
+    NeoGeo(SerialNeoGeo),
 }
 
 impl Serial {
     /// A serializer from the given parameters
     #[rustfmt::skip]
-    pub fn new(hardware: Hardware, kind: TileKind, bit_plane: Option<&str>) -> Result<Self, ParseError> {
+    pub fn new(
+        hardware: Hardware,
+        kind: TileKind,
+        bit_plane: Option<&str>,
+    ) -> Result<Self, ParseError> {
         match hardware {
             Hardware::Famicom      => Ok(Self::Famicom     (parse_bit_plane::<SerialFamicom     >(bit_plane)?)),
             Hardware::SuperFamicom => Ok(Self::SuperFamicom(parse_bit_plane::<SerialSuperFamicom>(bit_plane)?)),
-            Hardware::GameBoy      => Ok(Self::GameBoy     (SerialGameBoy     ::default())),
-            Hardware::VirtualBoy   => Ok(Self::VirtualBoy  (SerialVirtualBoy  ::default())),
-            Hardware::NeoGeoPocket => Ok(Self::NeoGeoPocket(SerialNeoGeoPocket::default())),
-            Hardware::WonderSwan   => Ok(Self::WonderSwan  (SerialWonderSwan  ::default())),
-            Hardware::MasterSystem => Ok(Self::MasterSystem(SerialMasterSystem::default())),
-            Hardware::MegaDrive    => Ok(Self::MegaDrive   (SerialMegaDrive   ::default())),
-            Hardware::PcEngine     => Ok(Self::PcEngine    (match kind {
+            Hardware::GameBoy | Hardware::GameBoyColor => {
+                Ok(Self::GameBoy(SerialGameBoy::default()))
+            }
+            Hardware::VirtualBoy => Ok(Self::VirtualBoy(SerialVirtualBoy::default())),
+            Hardware::PcEngine   => Ok(Self::PcEngine(match kind {
                 TileKind::Foreground => SerialPcEngine::Sg,
                 TileKind::Background => SerialPcEngine::Cg,
             })),
+            Hardware::WonderSwan   => Ok(Self::WonderSwan  (SerialWonderSwan  ::default())),
+            Hardware::MasterSystem => Ok(Self::MasterSystem(SerialMasterSystem::default())),
+            Hardware::MegaDrive    => Ok(Self::MegaDrive   (SerialMegaDrive   ::default())),
+            Hardware::NeoGeoPocket => Ok(Self::NeoGeoPocket(SerialNeoGeoPocket::default())),
+            Hardware::NeoGeo       => Ok(Self::NeoGeo      (SerialNeoGeo      ::default())),
         }
     }
 }
@@ -130,7 +140,7 @@ where
     }
 }
 
-/// Define the serialization for the GameBoy
+/// Define the serialization for the GameBoy & GameBoy Color
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub struct SerialGameBoy;
 
@@ -154,10 +164,6 @@ pub enum SerialPcEngine {
     Sg,
 }
 
-/// Define the serialization for the NeoGeo Pocket
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub struct SerialNeoGeoPocket;
-
 /// Define the serialization for the WonderSwan
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct SerialWonderSwan;
@@ -169,6 +175,14 @@ pub struct SerialMasterSystem;
 /// Define the serialization for the MegaDrive
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct SerialMegaDrive;
+
+/// Define the serialization for the NeoGeo Pocket
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct SerialNeoGeoPocket;
+
+/// Define the serialization for the NeoGeo
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct SerialNeoGeo;
 
 /*
  * TODO:
@@ -186,10 +200,11 @@ impl SerialTile for Serial {
             Serial::GameBoy     (serial) => serial.serialize(tileset),
             Serial::VirtualBoy  (serial) => serial.serialize(tileset),
             Serial::PcEngine    (serial) => serial.serialize(tileset),
-            Serial::NeoGeoPocket(serial) => serial.serialize(tileset),
             Serial::WonderSwan  (serial) => serial.serialize(tileset),
             Serial::MasterSystem(serial) => serial.serialize(tileset),
             Serial::MegaDrive   (serial) => serial.serialize(tileset),
+            Serial::NeoGeoPocket(serial) => serial.serialize(tileset),
+            Serial::NeoGeo      (serial) => serial.serialize(tileset),
         }
     }
 }
@@ -208,11 +223,12 @@ impl SerialTile for SerialFamicom {
 impl SerialTile for SerialSuperFamicom {
     /// Serialize the tileset in a Super Famicom compatible layout
     fn serialize(&self, tileset: &TileSet) -> Bytes {
+        #[cfg_attr(cfg, rustfmt::skip)]
         let bits: BitVec<u8, Lsb0> = match self {
-            Self::Bpp2 => SerialTileSplit::new(2).serialize(tileset),
-            Self::Bpp4 => SerialInterleave::new(4).serialize(tileset),
-            Self::Bpp8 => SerialInterleave::new(8).serialize(tileset),
-            Self::Mode7 => SerialLinear::new(8).serialize(tileset),
+            Self::Bpp2  => SerialTileSplit ::new(2).serialize(tileset),
+            Self::Bpp4  => SerialInterleave::new(4).serialize(tileset),
+            Self::Bpp8  => SerialInterleave::new(8).serialize(tileset),
+            Self::Mode7 => SerialLinear    ::new(8).serialize(tileset),
         };
         Bytes::copy_from_slice(bits.as_raw_slice())
     }
@@ -247,14 +263,6 @@ impl SerialTile for SerialPcEngine {
                 Bytes::copy_from_slice(cast_slice(bits.as_raw_slice()))
             }
         }
-    }
-}
-
-impl SerialTile for SerialNeoGeoPocket {
-    /// Serialize the tileset in a NeoGeo Pocket compatible layout
-    fn serialize(&self, tileset: &TileSet) -> Bytes {
-        let bits: BitVec<u16, Lsb0> = SerialLinear::new(2).serialize(tileset);
-        Bytes::copy_from_slice(cast_slice(bits.as_raw_slice()))
     }
 }
 
@@ -299,5 +307,20 @@ impl SerialTile for SerialMegaDrive {
         }
 
         wbuffer.freeze()
+    }
+}
+
+impl SerialTile for SerialNeoGeoPocket {
+    /// Serialize the tileset in a NeoGeo Pocket compatible layout
+    fn serialize(&self, tileset: &TileSet) -> Bytes {
+        let bits: BitVec<u16, Lsb0> = SerialLinear::new(2).serialize(tileset);
+        Bytes::copy_from_slice(cast_slice(bits.as_raw_slice()))
+    }
+}
+
+impl SerialTile for SerialNeoGeo {
+    /// Serialize the tileset in a NeoGeo compatible layout
+    fn serialize(&self, tileset: &TileSet) -> Bytes {
+        todo!()
     }
 }

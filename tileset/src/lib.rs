@@ -2,6 +2,7 @@
 
 pub mod config;
 pub mod data;
+pub mod render;
 pub mod serial;
 
 pub mod prelude {

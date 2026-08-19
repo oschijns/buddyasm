@@ -2,8 +2,6 @@
 
 use crate::data::tile::TileSet;
 use bitvec::{order::BitOrder, store::BitStore, vec::BitVec};
-use bytes::{BufMut, Bytes, BytesMut};
-use itertools::Itertools;
 
 /// Define a serialization strategy for the tileset
 pub(crate) trait SerialStrategy<T, O>

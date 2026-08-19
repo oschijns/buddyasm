@@ -3,7 +3,7 @@
 use crate::config::{
     input::BuilderConfig,
     tile::{
-        BgTile, FgSprite, ParseError, SpriteNeoGeoPocket, SpriteNintendo1, SpriteNintendo2,
+        FixedTile, ParseError, SpriteNeoGeoPocket, SpriteNintendo1, SpriteNintendo2,
         SpritePcEngine, SpriteSegaMD, SpriteSegaMS, TileConfig, TileOrSprite,
     },
 };
@@ -31,6 +31,10 @@ pub enum Hardware {
     #[serde(alias = "gameboy", alias = "gb")]
     GameBoy,
 
+    /// Game Boy Color
+    #[serde(alias = "gameboy-color", alias = "gbc")]
+    GameBoyColor,
+
     /// Virtual Boy
     #[serde(alias = "virtualboy", alias = "vb")]
     VirtualBoy,
@@ -38,10 +42,6 @@ pub enum Hardware {
     /// PC-Engine
     #[serde(alias = "pc-engine", alias = "pce")]
     PcEngine,
-
-    /// NeoGeo Pocket
-    #[serde(alias = "neogeo-pocket", alias = "ngp")]
-    NeoGeoPocket,
 
     /// Wonder Swan
     #[serde(alias = "wonderswan", alias = "ws")]
@@ -54,6 +54,14 @@ pub enum Hardware {
     /// MegaDrive / Genesis
     #[serde(alias = "megadrive", alias = "md")]
     MegaDrive,
+
+    /// NeoGeo Pocket
+    #[serde(alias = "neogeo-pocket", alias = "ngp")]
+    NeoGeoPocket,
+
+    /// NeoGeo
+    #[serde(alias = "neogeo", alias = "ng")]
+    NeoGeo,
 }
 
 /// Are we generating background tiles or foreground tiles (sprites)
@@ -81,14 +89,14 @@ pub enum Profile {
     /// Game Boy
     GameBoy(ProfileGameBoy),
 
+    /// Game Boy Color
+    GameBoyColor(ProfileGameBoyColor),
+
     /// Virtual Boy
     VirtualBoy(ProfileVirtualBoy),
 
     /// PC-Engine
     PcEngine(ProfilePcEngine),
-
-    /// NeoGeo Pocket
-    NeoGeoPocket(ProfileNeoGeoPocket),
 
     /// Wonder Swan
     WonderSwan(ProfileWonderSwan),
@@ -98,6 +106,12 @@ pub enum Profile {
 
     /// MegaDrive / Genesis
     MegaDrive(ProfileMegaDrive),
+
+    /// NeoGeo Pocket
+    NeoGeoPocket(ProfileNeoGeoPocket),
+
+    /// NeoGeo
+    NeoGeo(ProfileNeoGeo),
 }
 
 impl Profile {
@@ -113,23 +127,27 @@ impl Profile {
                 Hardware::Famicom      => Ok(Self::Famicom     (ProfileFamicom     (TileOrSprite::default_tile()))),
                 Hardware::SuperFamicom => Ok(Self::SuperFamicom(ProfileSuperFamicom(TileOrSprite::default_tile()))),
                 Hardware::GameBoy      => Ok(Self::GameBoy     (ProfileGameBoy     (TileOrSprite::default_tile()))),
+                Hardware::GameBoyColor => Ok(Self::GameBoyColor(ProfileGameBoyColor(TileOrSprite::default_tile()))),
                 Hardware::VirtualBoy   => Ok(Self::VirtualBoy  (ProfileVirtualBoy  (TileOrSprite::default_tile()))),
                 Hardware::PcEngine     => Ok(Self::PcEngine    (ProfilePcEngine    (TileOrSprite::default_tile()))),
-                Hardware::NeoGeoPocket => Ok(Self::NeoGeoPocket(ProfileNeoGeoPocket(TileOrSprite::default_tile()))),
                 Hardware::WonderSwan   => Ok(Self::WonderSwan  (ProfileWonderSwan  (TileOrSprite::default_tile()))),
                 Hardware::MasterSystem => Ok(Self::MasterSystem(ProfileMasterSystem(TileOrSprite::default_tile()))),
                 Hardware::MegaDrive    => Ok(Self::MegaDrive   (ProfileMegaDrive   (TileOrSprite::default_tile()))),
+                Hardware::NeoGeoPocket => Ok(Self::NeoGeoPocket(ProfileNeoGeoPocket(TileOrSprite::default_tile()))),
+                Hardware::NeoGeo       => Ok(Self::NeoGeo      (ProfileNeoGeo      (TileOrSprite::default_tile()))),
             },
             TileKind::Foreground => match hardware {
                 Hardware::Famicom      => Ok(Self::Famicom     (ProfileFamicom     (TileOrSprite::sprite(sprite_size)?))),
                 Hardware::SuperFamicom => Ok(Self::SuperFamicom(ProfileSuperFamicom(TileOrSprite::sprite(sprite_size)?))),
                 Hardware::GameBoy      => Ok(Self::GameBoy     (ProfileGameBoy     (TileOrSprite::sprite(sprite_size)?))),
+                Hardware::GameBoyColor => Ok(Self::GameBoyColor(ProfileGameBoyColor(TileOrSprite::sprite(sprite_size)?))),
                 Hardware::VirtualBoy   => Ok(Self::VirtualBoy  (ProfileVirtualBoy  (TileOrSprite::sprite(sprite_size)?))),
                 Hardware::PcEngine     => Ok(Self::PcEngine    (ProfilePcEngine    (TileOrSprite::sprite(sprite_size)?))),
-                Hardware::NeoGeoPocket => Ok(Self::NeoGeoPocket(ProfileNeoGeoPocket(TileOrSprite::sprite(sprite_size)?))),
-                Hardware::WonderSwan   => Ok(Self::Famicom     (ProfileFamicom     (TileOrSprite::default_sprite()))),
+                Hardware::WonderSwan   => Ok(Self::WonderSwan  (ProfileWonderSwan  (TileOrSprite::default_sprite()))),
                 Hardware::MasterSystem => Ok(Self::MasterSystem(ProfileMasterSystem(TileOrSprite::sprite(sprite_size)?))),
                 Hardware::MegaDrive    => Ok(Self::MegaDrive   (ProfileMegaDrive   (TileOrSprite::sprite(sprite_size)?))),
+                Hardware::NeoGeoPocket => Ok(Self::NeoGeoPocket(ProfileNeoGeoPocket(TileOrSprite::sprite(sprite_size)?))),
+                Hardware::NeoGeo       => Ok(Self::NeoGeo      (ProfileNeoGeo      (TileOrSprite::default_sprite()))),
             },
         }
     }
@@ -137,7 +155,7 @@ impl Profile {
 
 /// Famicom Profile
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-pub struct ProfileFamicom(pub(crate) TileOrSprite<BgTile<false>, SpriteNintendo1>);
+pub struct ProfileFamicom(pub(crate) TileOrSprite<FixedTile<false>, SpriteNintendo1>);
 
 // <TODO>
 // The SNES supports two sprites size at the same time.
@@ -149,35 +167,43 @@ pub struct ProfileFamicom(pub(crate) TileOrSprite<BgTile<false>, SpriteNintendo1
 
 /// Super Famicom Profile
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-pub struct ProfileSuperFamicom(pub(crate) TileOrSprite<BgTile, SpriteNintendo2>);
+pub struct ProfileSuperFamicom(pub(crate) TileOrSprite<FixedTile, SpriteNintendo2>);
 
 /// Game Boy Profile
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-pub struct ProfileGameBoy(pub(crate) TileOrSprite<BgTile<false>, SpriteNintendo1>);
+pub struct ProfileGameBoy(pub(crate) TileOrSprite<FixedTile<false>, SpriteNintendo1>);
+
+/// Game Boy Color Profile
+#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+pub struct ProfileGameBoyColor(pub(crate) TileOrSprite<FixedTile, SpriteNintendo1>);
 
 /// Virtual Boy Profile
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-pub struct ProfileVirtualBoy(pub(crate) TileOrSprite<BgTile, SpriteNintendo2>);
+pub struct ProfileVirtualBoy(pub(crate) TileOrSprite<FixedTile, SpriteNintendo2>);
 
 /// PC-Engine Profile
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-pub struct ProfilePcEngine(pub(crate) TileOrSprite<BgTile, SpritePcEngine>);
-
-/// NeoGeo Pocket Profile
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-pub struct ProfileNeoGeoPocket(pub(crate) TileOrSprite<BgTile, SpriteNeoGeoPocket>);
+pub struct ProfilePcEngine(pub(crate) TileOrSprite<FixedTile, SpritePcEngine>);
 
 /// WonderSwan Profile
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-pub struct ProfileWonderSwan(pub(crate) TileOrSprite<BgTile, FgSprite>);
+pub struct ProfileWonderSwan(pub(crate) TileOrSprite<FixedTile, FixedTile<true, 8>>);
 
 /// Master System Profile
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-pub struct ProfileMasterSystem(pub(crate) TileOrSprite<BgTile, SpriteSegaMS>);
+pub struct ProfileMasterSystem(pub(crate) TileOrSprite<FixedTile, SpriteSegaMS>);
 
 /// MegaDrive Profile
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
-pub struct ProfileMegaDrive(pub(crate) TileOrSprite<BgTile, SpriteSegaMD>);
+pub struct ProfileMegaDrive(pub(crate) TileOrSprite<FixedTile, SpriteSegaMD>);
+
+/// NeoGeo Pocket Profile
+#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+pub struct ProfileNeoGeoPocket(pub(crate) TileOrSprite<FixedTile, SpriteNeoGeoPocket>);
+
+/// NeoGeo Profile
+#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+pub struct ProfileNeoGeo(pub(crate) TileOrSprite<FixedTile<true, 16>, FixedTile<true, 16>>);
 
 impl ToConfig for Profile {
     #[rustfmt::skip]
@@ -186,12 +212,14 @@ impl ToConfig for Profile {
             Self::Famicom     (profile) => profile.to_config(),
             Self::SuperFamicom(profile) => profile.to_config(),
             Self::GameBoy     (profile) => profile.to_config(),
+            Self::GameBoyColor(profile) => profile.to_config(),
             Self::VirtualBoy  (profile) => profile.to_config(),
             Self::PcEngine    (profile) => profile.to_config(),
-            Self::NeoGeoPocket(profile) => profile.to_config(),
             Self::WonderSwan  (profile) => profile.to_config(),
             Self::MasterSystem(profile) => profile.to_config(),
             Self::MegaDrive   (profile) => profile.to_config(),
+            Self::NeoGeoPocket(profile) => profile.to_config(),
+            Self::NeoGeo      (profile) => profile.to_config(),
         }
     }
 }
@@ -217,6 +245,13 @@ impl ToConfig for ProfileGameBoy {
     }
 }
 
+/// Game Boy Color Config
+impl ToConfig for ProfileGameBoyColor {
+    fn to_config(&self) -> BuilderConfig {
+        build_config(&self.0)
+    }
+}
+
 /// Virtual Boy Config
 impl ToConfig for ProfileVirtualBoy {
     fn to_config(&self) -> BuilderConfig {
@@ -231,13 +266,6 @@ impl ToConfig for ProfilePcEngine {
             TileOrSprite::Tile(_) => build_config(&self.0),
             TileOrSprite::Sprite(_) => build_config_params(&self.0, 16, 256),
         }
-    }
-}
-
-/// NeoGeo Pocket Config
-impl ToConfig for ProfileNeoGeoPocket {
-    fn to_config(&self) -> BuilderConfig {
-        build_config(&self.0)
     }
 }
 
@@ -257,6 +285,20 @@ impl ToConfig for ProfileMasterSystem {
 
 /// MegaDrive Config
 impl ToConfig for ProfileMegaDrive {
+    fn to_config(&self) -> BuilderConfig {
+        build_config(&self.0)
+    }
+}
+
+/// NeoGeo Pocket Config
+impl ToConfig for ProfileNeoGeoPocket {
+    fn to_config(&self) -> BuilderConfig {
+        build_config(&self.0)
+    }
+}
+
+/// NeoGeo Config
+impl ToConfig for ProfileNeoGeo {
     fn to_config(&self) -> BuilderConfig {
         build_config(&self.0)
     }

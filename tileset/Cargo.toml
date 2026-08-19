@@ -51,5 +51,8 @@ asefile = "0.3"
 # Load Tiled file
 tiled = "0.15"
 
+# Generate source files from data processed
+tera = { version = "2", features = ["fast"] }
+
 # Binary dependencies
 buddyasm_common = { path = "../common", optional = true }
