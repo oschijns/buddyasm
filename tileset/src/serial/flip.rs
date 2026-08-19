@@ -5,40 +5,43 @@ NES
     BG:       no flip
     Sprite:   H = bit 6, V = bit 7
 
+SNES
+    BG:       H = bit 14, V = bit 15
+    Sprite:   H = bit 6, V = bit 7
+
 Game Boy
     BG DMG:   no flip
     BG GBC:   H = bit 5, V = bit 6
     Sprite:   H = bit 5, V = bit 6
 
-SNES
+WonderSwan
     BG:       H = bit 14, V = bit 15
-    Sprite:   H = bit 6, V = bit 7
+
+PC-Engine
+    BG:       H = bit ?, V = bit ?
 
 Master System
     BG:       H = bit 9, V = bit 10
     Sprite:   no flip
 
-Neo Geo Pocket
-    BG:       H = bit 15, V = bit 14   // considering whole 16-bit entry
-    Sprite:   H = bit 15, V = bit 14
-
-WonderSwan
-    BG:       H = bit 14, V = bit 15
-
 Mega Drive
     BG:       H = bit 11, V = bit 12
     Sprite:   H/V are represented in the sprite's tile attribute word
 
+Neo Geo Pocket
+    BG:       H = bit 15, V = bit 14   // considering whole 16-bit entry
+    Sprite:   H = bit 15, V = bit 14
+
 Neo Geo
-    Sprite tile: H = bit 1, V = bit 0
+    Sprite tile: H = bit 0, V = bit 1
 */
 
 use crate::{
     config::{
         profile::{
             ProfileFamicom, ProfileGameBoy, ProfileGameBoyColor, ProfileMasterSystem,
-            ProfileMegaDrive, ProfilePcEngine, ProfileSuperFamicom, ProfileVirtualBoy,
-            ProfileWonderSwan,
+            ProfileMegaDrive, ProfileNeoGeo, ProfileNeoGeoPocket, ProfilePcEngine,
+            ProfileSuperFamicom, ProfileVirtualBoy, ProfileWonderSwan,
         },
         tile::TileOrSprite,
     },
@@ -135,6 +138,22 @@ impl FlipEncoder for ProfileMegaDrive {
     }
 }
 
+/// Encodes a flip value for the Neo Geo Pocket target
+impl FlipEncoder for ProfileNeoGeoPocket {
+    #[inline]
+    fn encode_flip(&self, flip: Flip) -> u16 {
+        flip_h15_v14(flip)
+    }
+}
+
+/// Encodes a flip value for the Neo Geo target
+impl FlipEncoder for ProfileNeoGeo {
+    #[inline]
+    fn encode_flip(&self, flip: Flip) -> u16 {
+        flip_h0_v1(flip)
+    }
+}
+
 /// Flipping tiles is not supported for the target
 /// For NES, MasterSystem, PC-Engine
 const NO_FLIP: u16 = 0;
@@ -183,12 +202,6 @@ fn flip_h11_v12(flip: Flip) -> u16 {
 
 /// Flipping bits for NeoGeo
 #[inline]
-fn flip_h1_v0(flip: Flip) -> u16 {
-    #[cfg_attr(cfg, rustfmt::skip)]
-    match flip {
-        Flip::None       => 0b00,
-        Flip::Horizontal => 0b10,
-        Flip::Vertical   => 0b01,
-        Flip::Both       => 0b11,
-    }
+fn flip_h0_v1(flip: Flip) -> u16 {
+    flip as u16
 }
