@@ -1,7 +1,5 @@
 //! Utility functions for rendering output images using Tera templates.
 
-pub mod attr;
-
 use crate::config::output::OutputImage;
 use tera::{Context, Tera};
 

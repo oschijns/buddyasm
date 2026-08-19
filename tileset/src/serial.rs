@@ -3,6 +3,7 @@
 pub mod flip;
 pub mod profile;
 pub mod strategy;
+pub mod tile_data;
 
 use crate::data::{flip::Flip, tile::TileSet};
 use bytes::Bytes;

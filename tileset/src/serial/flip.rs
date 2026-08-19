@@ -60,7 +60,7 @@ impl FlipEncoder for ProfileFamicom {
     fn encode_flip(&self, flip: Flip) -> u16 {
         match self.0 {
             TileOrSprite::Tile(_) => NO_FLIP,
-            TileOrSprite::Sprite(_) => flip_h6_v7(flip),
+            TileOrSprite::Sprite(_) => flip_shift::<6>(flip),
         }
     }
 }
@@ -70,8 +70,8 @@ impl FlipEncoder for ProfileSuperFamicom {
     #[inline]
     fn encode_flip(&self, flip: Flip) -> u16 {
         match self.0 {
-            TileOrSprite::Tile(_) => flip_h14_v15(flip),
-            TileOrSprite::Sprite(_) => flip_h6_v7(flip),
+            TileOrSprite::Tile(_) => flip_shift::<6>(flip),
+            TileOrSprite::Sprite(_) => flip_shift::<6>(flip),
         }
     }
 }
@@ -82,7 +82,7 @@ impl FlipEncoder for ProfileGameBoy {
     fn encode_flip(&self, flip: Flip) -> u16 {
         match self.0 {
             TileOrSprite::Tile(_) => NO_FLIP,
-            TileOrSprite::Sprite(_) => flip_h5_v6(flip),
+            TileOrSprite::Sprite(_) => flip_shift::<5>(flip),
         }
     }
 }
@@ -91,7 +91,10 @@ impl FlipEncoder for ProfileGameBoy {
 impl FlipEncoder for ProfileGameBoyColor {
     #[inline]
     fn encode_flip(&self, flip: Flip) -> u16 {
-        flip_h5_v6(flip)
+        match self.0 {
+            TileOrSprite::Tile(_) => flip_shift::<5>(flip),
+            TileOrSprite::Sprite(_) => flip_shift::<5>(flip),
+        }
     }
 }
 
@@ -99,15 +102,21 @@ impl FlipEncoder for ProfileGameBoyColor {
 impl FlipEncoder for ProfileVirtualBoy {
     #[inline]
     fn encode_flip(&self, flip: Flip) -> u16 {
-        flip_h14_v15(flip)
+        match self.0 {
+            TileOrSprite::Tile(_) => flip_pos::<5, 4>(flip),
+            TileOrSprite::Sprite(_) => flip_pos::<5, 4>(flip),
+        }
     }
 }
 
 /// Encodes a flip value for the PC Engine target
 impl FlipEncoder for ProfilePcEngine {
     #[inline]
-    fn encode_flip(&self, _flip: Flip) -> u16 {
-        NO_FLIP
+    fn encode_flip(&self, flip: Flip) -> u16 {
+        match self.0 {
+            TileOrSprite::Tile(_) => NO_FLIP,
+            TileOrSprite::Sprite(_) => flip_pos::<11, 15>(flip),
+        }
     }
 }
 
@@ -115,7 +124,10 @@ impl FlipEncoder for ProfilePcEngine {
 impl FlipEncoder for ProfileWonderSwan {
     #[inline]
     fn encode_flip(&self, flip: Flip) -> u16 {
-        flip_h6_v7(flip)
+        match self.0 {
+            TileOrSprite::Tile(_) => flip_shift::<6>(flip),
+            TileOrSprite::Sprite(_) => flip_shift::<6>(flip),
+        }
     }
 }
 
@@ -124,7 +136,7 @@ impl FlipEncoder for ProfileMasterSystem {
     #[inline]
     fn encode_flip(&self, flip: Flip) -> u16 {
         match self.0 {
-            TileOrSprite::Tile(_) => flip_h9_v10(flip) as u16,
+            TileOrSprite::Tile(_) => flip_shift::<9>(flip),
             TileOrSprite::Sprite(_) => NO_FLIP,
         }
     }
@@ -134,7 +146,10 @@ impl FlipEncoder for ProfileMasterSystem {
 impl FlipEncoder for ProfileMegaDrive {
     #[inline]
     fn encode_flip(&self, flip: Flip) -> u16 {
-        flip_h11_v12(flip)
+        match self.0 {
+            TileOrSprite::Tile(_) => flip_shift::<3>(flip),
+            TileOrSprite::Sprite(_) => flip_shift::<3>(flip),
+        }
     }
 }
 
@@ -142,7 +157,10 @@ impl FlipEncoder for ProfileMegaDrive {
 impl FlipEncoder for ProfileNeoGeoPocket {
     #[inline]
     fn encode_flip(&self, flip: Flip) -> u16 {
-        flip_h15_v14(flip)
+        match self.0 {
+            TileOrSprite::Tile(_) => flip_pos::<7, 6>(flip),
+            TileOrSprite::Sprite(_) => flip_pos::<7, 6>(flip),
+        }
     }
 }
 
@@ -150,7 +168,7 @@ impl FlipEncoder for ProfileNeoGeoPocket {
 impl FlipEncoder for ProfileNeoGeo {
     #[inline]
     fn encode_flip(&self, flip: Flip) -> u16 {
-        flip_h0_v1(flip)
+        flip as u16
     }
 }
 
@@ -158,50 +176,23 @@ impl FlipEncoder for ProfileNeoGeo {
 /// For NES, MasterSystem, PC-Engine
 const NO_FLIP: u16 = 0;
 
-/// Flipping bits for NES, SNES, WonderSwan
+/// Encodes a flip value for a target by shifting the flip bits into the
+/// appropriate position. This works for targets where horizontal flipping
+/// is at bit position `N` and vertical flipping is at bit position `N + 1`.
 #[inline]
-fn flip_h6_v7(flip: Flip) -> u16 {
-    (flip as u16) << 6
+fn flip_shift<const N: usize>(flip: Flip) -> u16 {
+    ((flip as usize) << N) as u16
 }
 
-/// Flipping bits for GameBoy
+/// Encodes a flip value for a target with arbitrary bit positions for
+/// horizontal and vertical flipping.
 #[inline]
-fn flip_h5_v6(flip: Flip) -> u16 {
-    (flip as u16) << 5
-}
-
-/// Flipping bits for Master System
-#[inline]
-fn flip_h9_v10(flip: Flip) -> u16 {
-    (flip as u16) << 9
-}
-
-/// Flipping bits for SNES, VirtualBoy, WonderSwan
-#[inline]
-fn flip_h14_v15(flip: Flip) -> u16 {
-    (flip as u16) << 14
-}
-
-/// Flipping bits for NeoGeo Pocket
-#[inline]
-fn flip_h15_v14(flip: Flip) -> u16 {
+fn flip_pos<const H: usize, const V: usize>(flip: Flip) -> u16 {
     #[cfg_attr(cfg, rustfmt::skip)]
     match flip {
-        Flip::None       => 0b00_000000_00000000,
-        Flip::Horizontal => 0b10_000000_00000000,
-        Flip::Vertical   => 0b01_000000_00000000,
-        Flip::Both       => 0b11_000000_00000000,
+        Flip::None       =>  0,
+        Flip::Horizontal =>  1 << H,
+        Flip::Vertical   =>  1 << V,
+        Flip::Both       => (1 << H) | (1 << V),
     }
-}
-
-/// Flipping bits for MegaDrive
-#[inline]
-fn flip_h11_v12(flip: Flip) -> u16 {
-    (flip as u16) << 11
-}
-
-/// Flipping bits for NeoGeo
-#[inline]
-fn flip_h0_v1(flip: Flip) -> u16 {
-    flip as u16
 }
