@@ -13,7 +13,51 @@ pub struct InputStack {
     pub config: BuilderConfig,
 
     /// Stack of images to process
-    pub stack: Vec<(PathBuf, InputImage, PaletteSetRgba)>,
+    pub stack: Vec<InputEntry>,
+}
+
+/// Define an entry to process
+#[derive(Debug)]
+pub struct InputEntry {
+    /// Path to the file to process
+    pub path: PathBuf,
+
+    /// Name of the entry (used as the output file name)
+    pub name: String,
+
+    /// Image to process
+    pub image: InputImage,
+
+    /// Palette to use for the image
+    pub palette: PaletteSetRgba,
+
+    /// Whether to output a JSON file with the tile data
+    pub output_json: bool,
+
+    /// Path to the template file to use for the output
+    pub template: Option<PathBuf>,
+}
+
+impl InputEntry {
+    /// Create a new input entry.
+    #[inline]
+    pub fn new(
+        path: PathBuf,
+        name: String,
+        image: InputImage,
+        palette: PaletteSetRgba,
+        output_json: bool,
+        template: Option<PathBuf>,
+    ) -> Self {
+        Self {
+            path,
+            name,
+            image,
+            palette,
+            output_json,
+            template,
+        }
+    }
 }
 
 /// Define one element to process.

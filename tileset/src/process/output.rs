@@ -2,7 +2,7 @@
 
 use crate::data::{flip::Flip, tile::TileSet};
 use ndarray::Array2;
-use serde::{Deserialize, Serialize, ser::SerializeStruct};
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf, rc::Rc};
 
 /// TileSet generated and associated index maps
@@ -11,12 +11,50 @@ pub struct OutputStack {
     /// Generated tileset
     pub tileset: TileSet,
 
-    /// Associated index maps
-    pub images: HashMap<PathBuf, OutputImage>,
+    /// Entries that have been processed from the input stack
+    pub entries: Vec<OutputEntry>,
+}
+
+/// Result of processing a entry from the input stack
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OutputEntry {
+    /// Name of the output entry
+    pub name: String,
+
+    /// Should the output JSON be generated?
+    pub output_json: bool,
+
+    /// Path to the template file to use for the output entry
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub template: Option<String>,
+
+    /// Main image data for the output entry
+    #[serde(flatten)]
+    pub image: OutputImage,
+}
+
+impl OutputEntry {
+    /// Create a new output entry
+    #[inline]
+    pub fn new(
+        name: String,
+        image: OutputImage,
+        output_json: bool,
+        template: Option<String>,
+    ) -> Self {
+        Self {
+            name,
+            output_json,
+            template,
+            image,
+        }
+    }
 }
 
 /// Result of processing a single image from the stack
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
 pub enum OutputImage {
     /// Output a single static image
     Static(IndexMap),

@@ -1,14 +1,12 @@
 //! Define how to encode tile data for a given platform
 
 use crate::{
-    config::{
-        output::IndexTile,
-        profile::{
-            ProfileFamicom, ProfileGameBoy, ProfileGameBoyColor, ProfileMasterSystem,
-            ProfileMegaDrive, ProfileNeoGeo, ProfileNeoGeoPocket, ProfilePcEngine,
-            ProfileSuperFamicom, ProfileVirtualBoy, ProfileWonderSwan,
-        },
+    config::profile::{
+        ProfileFamicom, ProfileGameBoy, ProfileGameBoyColor, ProfileMasterSystem, ProfileMegaDrive,
+        ProfileNeoGeo, ProfileNeoGeoPocket, ProfilePcEngine, ProfileSuperFamicom,
+        ProfileVirtualBoy, ProfileWonderSwan,
     },
+    process::output::IndexTile,
     serial::flip::FlipEncoder,
 };
 

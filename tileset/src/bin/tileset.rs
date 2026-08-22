@@ -7,6 +7,7 @@ use buddyasm_common::{
 };
 use buddyasm_tileset::{
     prelude::*,
+    process::process_stack,
     serial::{SerialTile, profile::Serial},
 };
 use image::EncodableLayout;
@@ -50,58 +51,9 @@ fn main() -> Result<(), anyhow::Error> {
         current_directory.join("output")
     };
 
-    // Create the input stack to process
-    let input = match InputStack::try_from(manifest) {
-        Ok(input) => input,
-        Err(errors) => {
-            for error in errors.iter() {
-                eprintln!("{}", error);
-            }
-            return Err(anyhow!("Errors in the input"));
-        }
-    };
-
-    // Create a builder for the tilemap
-    let mut builder = TileMapBuilder::new(input.config.clone());
-
-    // Store the index maps if some are generated
-    let mut output_images = HashMap::with_capacity(input.stack.len());
-
-    // Store errors encountered while processing the stack
-    let mut errors = BTreeMap::new();
-
-    // Process each element in the input stack
-    for (path, input_image, palette) in input.stack.iter() {
-        match input_image {
-            // Input is a common static image
-            InputImage::Static(image) => match builder.process(image, palette) {
-                Ok(index) => {
-                    output_images.insert(path.clone(), OutputImage::Static(index));
-                }
-                Err(err) => {
-                    errors.insert(path.clone(), err);
-                }
-            },
-            // Input is a character set (or similar)
-            InputImage::FixedPosition { image, mapping } => {
-                match builder.process_fixed(image, palette, mapping) {
-                    Ok(()) => {}
-                    Err(err) => {
-                        errors.insert(path.clone(), err);
-                    }
-                }
-            }
-            InputImage::Aseprite(aseprite) => todo!("Aseprite files not yet supported"),
-            InputImage::TiledTileset(tileset) => todo!("Tiled files not yet supported"),
-            InputImage::TiledMap(map) => todo!("Tiled files not yet supported"),
-        }
-    }
-
-    // Make the output stack
-    let output = OutputStack {
-        tileset: builder.complete(),
-        images: output_images,
-    };
+    // Create the input stack to process and generate the output stack
+    let input = InputStack::try_from(manifest)?;
+    let output = process_stack(&input)?;
 
     // serialize the result
     let bits = serial.serialize(&output.tileset);
@@ -110,14 +62,12 @@ fn main() -> Result<(), anyhow::Error> {
     file.write_all(bits.as_bytes())?;
 
     // serialize the output stack
-    for (path, image) in &output.images {
-        if let Some(filename) = path.file_stem() {
-            let mut path_file = out_path.join(filename);
+    for entry in &output.entries {
+        if entry.output_json {
+            let mut path_file = out_path.join(&entry.name);
             path_file.set_extension("json");
             let mut file = File::create(path_file)?;
-            serde_json::to_writer_pretty(&mut file, image)?;
-        } else {
-            panic!("Path should lead to a file thus it should have a filename");
+            serde_json::to_writer_pretty(&mut file, &entry.image)?;
         }
     }
 

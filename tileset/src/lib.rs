@@ -2,6 +2,7 @@
 
 pub mod config;
 pub mod data;
+pub mod process;
 pub mod render;
 pub mod serial;
 
@@ -10,8 +11,7 @@ pub mod prelude {
 
     pub use crate::config::{
         input::{BuilderConfig, InputImage, InputStack},
-        manifest::{Entry, InputStackError, MapRange, TileSetManifest},
-        output::{IndexMap, IndexTile, OutputAnimation, OutputImage, OutputStack},
+        manifest::{Entry, InputError, MapRange, TileSetManifest},
     };
     pub use crate::data::{
         builder::{TileError, TileMapBuilder},
@@ -23,5 +23,8 @@ pub mod prelude {
             PaletteSetRgba,
         },
         tile::{Pix, Tile, TileSet},
+    };
+    pub use crate::process::output::{
+        IndexMap, IndexTile, OutputAnimation, OutputImage, OutputStack,
     };
 }

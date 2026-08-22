@@ -1,10 +1,7 @@
 //! Read the input data and generate tiles.
 
 use crate::{
-    config::{
-        input::BuilderConfig,
-        output::{IndexMap, IndexTile},
-    },
+    config::input::BuilderConfig,
     data::{
         coords::{Coords, Dimensions},
         flip::Flip,
@@ -12,6 +9,7 @@ use crate::{
         palette::PaletteSet,
         tile::{Tile, TileSet},
     },
+    process::output::{IndexMap, IndexTile},
 };
 use core::ops::Deref;
 use image::{EncodableLayout, GenericImageView, ImageBuffer, Pixel};
