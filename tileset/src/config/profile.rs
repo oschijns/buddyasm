@@ -134,7 +134,7 @@ impl Profile {
                 Hardware::MasterSystem => Ok(Self::MasterSystem(ProfileMasterSystem(TileOrSprite::default_tile()))),
                 Hardware::MegaDrive    => Ok(Self::MegaDrive   (ProfileMegaDrive   (TileOrSprite::default_tile()))),
                 Hardware::NeoGeoPocket => Ok(Self::NeoGeoPocket(ProfileNeoGeoPocket(TileOrSprite::default_tile()))),
-                Hardware::NeoGeo       => Ok(Self::NeoGeo      (ProfileNeoGeo      (TileOrSprite::default_tile()))),
+                Hardware::NeoGeo       => Ok(Self::NeoGeo      (ProfileNeoGeo      (Default::default()))),
             },
             TileKind::Foreground => match hardware {
                 Hardware::Famicom      => Ok(Self::Famicom     (ProfileFamicom     (TileOrSprite::sprite(sprite_size)?))),
@@ -147,7 +147,7 @@ impl Profile {
                 Hardware::MasterSystem => Ok(Self::MasterSystem(ProfileMasterSystem(TileOrSprite::sprite(sprite_size)?))),
                 Hardware::MegaDrive    => Ok(Self::MegaDrive   (ProfileMegaDrive   (TileOrSprite::sprite(sprite_size)?))),
                 Hardware::NeoGeoPocket => Ok(Self::NeoGeoPocket(ProfileNeoGeoPocket(TileOrSprite::sprite(sprite_size)?))),
-                Hardware::NeoGeo       => Ok(Self::NeoGeo      (ProfileNeoGeo      (TileOrSprite::default_sprite()))),
+                Hardware::NeoGeo       => Ok(Self::NeoGeo      (ProfileNeoGeo      (Default::default()))),
             },
         }
     }
@@ -203,7 +203,7 @@ pub struct ProfileNeoGeoPocket(pub(crate) TileOrSprite<FixedTile, SpriteNeoGeoPo
 
 /// NeoGeo Profile
 #[derive(Debug, Default, Clone, Copy, PartialEq, Deserialize)]
-pub struct ProfileNeoGeo(pub(crate) TileOrSprite<FixedTile<true, 16>, FixedTile<true, 16>>);
+pub struct ProfileNeoGeo(pub(crate) FixedTile<true, 16>);
 
 impl ToConfig for Profile {
     #[rustfmt::skip]
