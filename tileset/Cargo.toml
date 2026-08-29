@@ -15,9 +15,9 @@ default = ["binary"]
 # dependencies enabled when building the binary
 binary = ["dep:buddyasm_common"]
 
-[[bin]]
-name = "tileset"
-required-features = ["binary"]
+#[[bin]]
+#name = "tileset"
+#required-features = ["binary"]
 
 
 [dependencies]

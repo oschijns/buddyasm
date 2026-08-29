@@ -1,50 +1,56 @@
-//! Define how to encode tile data for a given platform
-
 use crate::{
-    config::profile::{
-        Profile, ProfileFamicom, ProfileGameBoy, ProfileGameBoyColor, ProfileMasterSystem,
+    data::tilemap::{TileData, TileMap},
+    output_stack::{EncodedTile, OutMap, OutTile},
+    profile::{
+        BgFg, Profile, ProfileFamicom, ProfileGameBoy, ProfileGameBoyColor, ProfileMasterSystem,
         ProfileMegaDrive, ProfileNeoGeo, ProfileNeoGeoPocket, ProfilePcEngine, ProfileSuperFamicom,
         ProfileVirtualBoy, ProfileWonderSwan,
     },
-    process::output::{EncodedTile, IndexMap, OutTile},
-    serial::flip::FlipEncoder,
 };
+use ndarray::Array2;
 
 /// Encode tile data for the target hardware
-pub fn encode_tiles(encoder: &dyn TileData, map: &mut IndexMap) {
-    for tile in map.0.borrow_mut().iter_mut() {
-        tile.encoded = encoder.encode_tile(*tile);
+pub fn encode_tiles(encoder: &dyn EncodeTileData, map: &TileMap) -> OutMap {
+    // Prepare new buffer to add the encoded tile data
+    let mut out_map = Array2::<OutTile>::default(map.0.dim());
+
+    // Encode the tile data
+    for (out, tile) in out_map.iter_mut().zip(map.0.iter()) {
+        out.data = *tile;
+        out.encoded = encoder.encode_tile_data(*tile);
     }
+
+    OutMap::new(out_map)
 }
 
 /// Trait for encoding a tile for a given platform.
 /// Depending on the platform, the words should be read as 8-bits or 16-bits values.
-pub trait TileData {
-    fn encode_tile(&self, tile: OutTile) -> EncodedTile;
+pub trait EncodeTileData {
+    fn encode_tile_data(&self, tile: TileData) -> EncodedTile;
 }
 
-impl TileData for Profile {
-    fn encode_tile(&self, tile: OutTile) -> EncodedTile {
-        #[cfg_attr(cfg, rustfmt::skip)]
+impl EncodeTileData for Profile {
+    #[rustfmt::skip]
+    fn encode_tile_data(&self, tile: TileData) -> EncodedTile {
         match self {
-            Profile::Famicom     (profile) => profile.encode_tile(tile),
-            Profile::SuperFamicom(profile) => profile.encode_tile(tile),
-            Profile::GameBoy     (profile) => profile.encode_tile(tile),
-            Profile::GameBoyColor(profile) => profile.encode_tile(tile),
-            Profile::VirtualBoy  (profile) => profile.encode_tile(tile),
-            Profile::PcEngine    (profile) => profile.encode_tile(tile),
-            Profile::WonderSwan  (profile) => profile.encode_tile(tile),
-            Profile::MasterSystem(profile) => profile.encode_tile(tile),
-            Profile::MegaDrive   (profile) => profile.encode_tile(tile),
-            Profile::NeoGeoPocket(profile) => profile.encode_tile(tile),
-            Profile::NeoGeo      (profile) => profile.encode_tile(tile),
+            Profile::Famicom     (profile) => profile.encode_tile_data(tile),
+            Profile::SuperFamicom(profile) => profile.encode_tile_data(tile),
+            Profile::GameBoy     (profile) => profile.encode_tile_data(tile),
+            Profile::GameBoyColor(profile) => profile.encode_tile_data(tile),
+            Profile::VirtualBoy  (profile) => profile.encode_tile_data(tile),
+            Profile::PcEngine    (profile) => profile.encode_tile_data(tile),
+            Profile::WonderSwan  (profile) => profile.encode_tile_data(tile),
+            Profile::MasterSystem(profile) => profile.encode_tile_data(tile),
+            Profile::MegaDrive   (profile) => profile.encode_tile_data(tile),
+            Profile::NeoGeoPocket(profile) => profile.encode_tile_data(tile),
+            Profile::NeoGeo      (profile) => profile.encode_tile_data(tile),
         }
     }
 }
 
 /// Encode tile data for the Famicom platform
-impl TileData for ProfileFamicom {
-    fn encode_tile(&self, tile: OutTile) -> EncodedTile {
+impl EncodeTileData for ProfileFamicom {
+    fn encode_tile_data(&self, tile: TileData) -> EncodedTile {
         /*
          * attributes layout:
          * [ VHP. ..CC ]
@@ -54,7 +60,10 @@ impl TileData for ProfileFamicom {
          * C: color palette index
          */
         let index = (tile.tile_index & 0xFF) as u16;
-        let flip = self.encode_flip(tile.flip);
+        let flip = match self.mode {
+            BgFg::Bg(_) => flip::NONE,
+            BgFg::Fg(_) => flip::shift::<6>(tile.flip),
+        };
         let palette = (tile.palette_index & 0b11) as u16;
         let attr = flip | palette;
         EncodedTile { index, attr }
@@ -62,8 +71,8 @@ impl TileData for ProfileFamicom {
 }
 
 /// Encode tile data for the Super Famicom platform
-impl TileData for ProfileSuperFamicom {
-    fn encode_tile(&self, tile: OutTile) -> EncodedTile {
+impl EncodeTileData for ProfileSuperFamicom {
+    fn encode_tile_data(&self, tile: TileData) -> EncodedTile {
         /*
          * attributes layout:
          * [ VHPP CCCI ]
@@ -74,7 +83,10 @@ impl TileData for ProfileSuperFamicom {
          * I: tile index (high bit) (aka name select)
          */
         let index = (tile.tile_index & 0xFF) as u16;
-        let flip = self.encode_flip(tile.flip);
+        let flip = match self.mode {
+            BgFg::Bg(_) => flip::shift::<6>(tile.flip),
+            BgFg::Fg(_) => flip::shift::<6>(tile.flip),
+        };
         let palette = ((tile.palette_index & 0b111) << 1) as u16;
         let high = if tile.tile_index < 0x100 { 0u16 } else { 1u16 };
         let attr = flip | palette | high;
@@ -83,8 +95,8 @@ impl TileData for ProfileSuperFamicom {
 }
 
 /// Encode tile data for the Game Boy platform
-impl TileData for ProfileGameBoy {
-    fn encode_tile(&self, tile: OutTile) -> EncodedTile {
+impl EncodeTileData for ProfileGameBoy {
+    fn encode_tile_data(&self, tile: TileData) -> EncodedTile {
         /*
          * attributes layout:
          * [ PVHC .... ]
@@ -94,7 +106,10 @@ impl TileData for ProfileGameBoy {
          * C: DMG palette index
          */
         let index = (tile.tile_index & 0xFF) as u16;
-        let flip = self.encode_flip(tile.flip);
+        let flip = match self.mode {
+            BgFg::Bg(_) => flip::NONE,
+            BgFg::Fg(_) => flip::shift::<5>(tile.flip),
+        };
         let palette = if tile.palette_index == 0 {
             0u16
         } else {
@@ -106,8 +121,8 @@ impl TileData for ProfileGameBoy {
 }
 
 /// Encode tile data for the Game Boy Color platform
-impl TileData for ProfileGameBoyColor {
-    fn encode_tile(&self, tile: OutTile) -> EncodedTile {
+impl EncodeTileData for ProfileGameBoyColor {
+    fn encode_tile_data(&self, tile: TileData) -> EncodedTile {
         /*
          * attributes layout:
          * [ PVH. BCCC ]
@@ -118,7 +133,10 @@ impl TileData for ProfileGameBoyColor {
          * C: color palette index
          */
         let index = (tile.tile_index & 0xFF) as u16;
-        let flip = self.encode_flip(tile.flip);
+        let flip = match self.mode {
+            BgFg::Bg(_) => flip::shift::<5>(tile.flip),
+            BgFg::Fg(_) => flip::shift::<5>(tile.flip),
+        };
         let palette = (tile.palette_index & 0b111) as u16;
         let attr = flip | palette;
         EncodedTile { index, attr }
@@ -126,8 +144,8 @@ impl TileData for ProfileGameBoyColor {
 }
 
 /// Encode tile data for the Virtual Boy platform
-impl TileData for ProfileVirtualBoy {
-    fn encode_tile(&self, tile: OutTile) -> EncodedTile {
+impl EncodeTileData for ProfileVirtualBoy {
+    fn encode_tile_data(&self, tile: TileData) -> EncodedTile {
         /*
          * attributes layout:
          * [ CCHV .III ]
@@ -138,7 +156,10 @@ impl TileData for ProfileVirtualBoy {
          */
         let index = (tile.tile_index & 0xFF) as u16;
         let palette = ((tile.palette_index & 0b11) << 14) as u16;
-        let flip = self.encode_flip(tile.flip);
+        let flip = match self.mode {
+            BgFg::Bg(_) => flip::pos::<5, 4>(tile.flip),
+            BgFg::Fg(_) => flip::pos::<5, 4>(tile.flip),
+        };
         let high = ((tile.tile_index >> 16) & 0b111) as u16;
         let attr = palette | flip | high;
         EncodedTile { index, attr }
@@ -146,8 +167,8 @@ impl TileData for ProfileVirtualBoy {
 }
 
 /// Encode tile data for the PC Engine platform
-impl TileData for ProfilePcEngine {
-    fn encode_tile(&self, tile: OutTile) -> EncodedTile {
+impl EncodeTileData for ProfilePcEngine {
+    fn encode_tile_data(&self, tile: TileData) -> EncodedTile {
         /*
          * attributes layout:
          * [ V.yy H..x P... CCCC ]
@@ -159,7 +180,10 @@ impl TileData for ProfilePcEngine {
          * C: color palette index
          */
         let index = (tile.tile_index & 0xFF) as u16;
-        let flip = self.encode_flip(tile.flip);
+        let flip = match self.mode {
+            BgFg::Bg(_) => flip::NONE,
+            BgFg::Fg(_) => flip::pos::<11, 15>(tile.flip),
+        };
         let palette = (tile.palette_index & 0b1111) as u16;
         let attr = palette | flip;
         EncodedTile { index, attr }
@@ -167,8 +191,8 @@ impl TileData for ProfilePcEngine {
 }
 
 /// Encode tile data for the WonderSwan platform
-impl TileData for ProfileWonderSwan {
-    fn encode_tile(&self, tile: OutTile) -> EncodedTile {
+impl EncodeTileData for ProfileWonderSwan {
+    fn encode_tile_data(&self, tile: TileData) -> EncodedTile {
         /*
          * attributes layout:
          * [ VHPW CCCI ]
@@ -180,7 +204,10 @@ impl TileData for ProfileWonderSwan {
          * I: tile index (high bits)
          */
         let index = (tile.tile_index & 0xFF) as u16;
-        let flip = self.encode_flip(tile.flip);
+        let flip = match self.mode {
+            BgFg::Bg(_) => flip::shift::<6>(tile.flip),
+            BgFg::Fg(_) => flip::shift::<6>(tile.flip),
+        };
         let palette = ((tile.palette_index & 0b111) << 1) as u16;
         let high = if tile.tile_index < 0x100 { 0u16 } else { 1u16 };
         let attr = palette | flip | high;
@@ -189,17 +216,21 @@ impl TileData for ProfileWonderSwan {
 }
 
 /// Encode tile data for the SEGA Master System platform
-impl TileData for ProfileMasterSystem {
-    fn encode_tile(&self, tile: OutTile) -> EncodedTile {
+impl EncodeTileData for ProfileMasterSystem {
+    fn encode_tile_data(&self, tile: TileData) -> EncodedTile {
         /* no attributes */
+        let flip = match self.mode {
+            BgFg::Bg(_) => flip::shift::<9>(tile.flip),
+            BgFg::Fg(_) => flip::NONE,
+        };
         let index = (tile.tile_index & 0xFF) as u16;
         EncodedTile { index, attr: 0u16 }
     }
 }
 
 /// Encode tile data for the SEGA Mega Drive platform
-impl TileData for ProfileMegaDrive {
-    fn encode_tile(&self, tile: OutTile) -> EncodedTile {
+impl EncodeTileData for ProfileMegaDrive {
+    fn encode_tile_data(&self, tile: TileData) -> EncodedTile {
         /*
          * attributes layout:
          * [ PCCV HIII ]
@@ -211,7 +242,10 @@ impl TileData for ProfileMegaDrive {
          */
         let index = (tile.tile_index & 0xFF) as u16;
         let palette = ((tile.palette_index & 0b111) << 1) as u16;
-        let flip = self.encode_flip(tile.flip);
+        let flip = match self.mode {
+            BgFg::Bg(_) => flip::shift::<3>(tile.flip),
+            BgFg::Fg(_) => flip::shift::<3>(tile.flip),
+        };
         let high = ((tile.tile_index >> 8) & 0b111) as u16;
         let attr = palette | flip | high;
         EncodedTile { index, attr }
@@ -219,8 +253,8 @@ impl TileData for ProfileMegaDrive {
 }
 
 /// Encode tile data for the NeoGeo Pocket platform
-impl TileData for ProfileNeoGeoPocket {
-    fn encode_tile(&self, tile: OutTile) -> EncodedTile {
+impl EncodeTileData for ProfileNeoGeoPocket {
+    fn encode_tile_data(&self, tile: TileData) -> EncodedTile {
         /*
          * attributes layout:
          * [ HVCp PhvI ]
@@ -233,7 +267,10 @@ impl TileData for ProfileNeoGeoPocket {
          * I: tile index (high bits) (aka character code)
          */
         let index = (tile.tile_index & 0xFF) as u16;
-        let flip = self.encode_flip(tile.flip);
+        let flip = match self.mode {
+            BgFg::Bg(_) => flip::pos::<7, 6>(tile.flip),
+            BgFg::Fg(_) => flip::pos::<7, 6>(tile.flip),
+        };
         let palette = if tile.palette_index == 0 {
             0u16
         } else {
@@ -246,8 +283,8 @@ impl TileData for ProfileNeoGeoPocket {
 }
 
 /// Encode tile data for the NeoGeo platform
-impl TileData for ProfileNeoGeo {
-    fn encode_tile(&self, tile: OutTile) -> EncodedTile {
+impl EncodeTileData for ProfileNeoGeo {
+    fn encode_tile_data(&self, tile: TileData) -> EncodedTile {
         /*
          * attributes layout:
          * [ CCCC CCCC IIII AaVH ]
@@ -261,8 +298,36 @@ impl TileData for ProfileNeoGeo {
         let index = (tile.tile_index & 0xFFFF) as u16;
         let palette = ((tile.palette_index & 0xFF) << 8) as u16;
         let high = ((tile.tile_index & 0xF_0000) >> 4) as u16;
-        let flip = self.encode_flip(tile.flip);
+        let flip = tile.flip as u16;
         let attr = palette | high | flip;
         EncodedTile { index, attr }
+    }
+}
+
+mod flip {
+    use crate::data::flip::Flip;
+
+    /// Flipping tiles is not supported for the target
+    /// For NES, MasterSystem, PC-Engine
+    pub(super) const NONE: u16 = 0;
+
+    /// Encodes a flip value for a target by shifting the flip bits into the
+    /// appropriate position. This works for targets where horizontal flipping
+    /// is at bit position `N` and vertical flipping is at bit position `N + 1`.
+    #[inline]
+    pub(super) fn shift<const N: usize>(flip: Flip) -> u16 {
+        ((flip as usize) << N) as u16
+    }
+
+    /// Encodes a flip value for a target with arbitrary bit positions for
+    /// horizontal and vertical flipping.
+    #[inline]
+    pub(super) fn pos<const H: usize, const V: usize>(flip: Flip) -> u16 {
+        match flip {
+            Flip::None => 0,
+            Flip::Horizontal => 1 << H,
+            Flip::Vertical => 1 << V,
+            Flip::Both => (1 << H) | (1 << V),
+        }
     }
 }

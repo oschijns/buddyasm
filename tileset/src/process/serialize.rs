@@ -1,10 +1,168 @@
 //! Define generic strategies for serializing a tile.
 
-use crate::data::tile::TileSet;
-use bitvec::{order::BitOrder, store::BitStore, vec::BitVec};
+use crate::{data::tileset::TileSet, profile::*};
+use bitvec::{
+    order::{BitOrder, Lsb0, Msb0},
+    store::BitStore,
+    vec::BitVec,
+};
+use bytemuck::cast_slice;
+use bytes::{BufMut, Bytes, BytesMut};
+
+/// Serialize the generated tileset for the target system profile
+pub trait SerializeTileSet {
+    /// Serialize the generated tileset for the target system profile
+    fn serialize(&self, tileset: &TileSet) -> Bytes;
+}
+
+// MARK: System
+
+impl SerializeTileSet for Profile {
+    #[rustfmt::skip]
+    fn serialize(&self, tileset: &TileSet) -> Bytes {
+        match self {
+            Self::Famicom     (serial) => serial.serialize(tileset),
+            Self::SuperFamicom(serial) => serial.serialize(tileset),
+            Self::GameBoy     (serial) => serial.serialize(tileset),
+            Self::GameBoyColor(serial) => serial.serialize(tileset),
+            Self::VirtualBoy  (serial) => serial.serialize(tileset),
+            Self::PcEngine    (serial) => serial.serialize(tileset),
+            Self::WonderSwan  (serial) => serial.serialize(tileset),
+            Self::MasterSystem(serial) => serial.serialize(tileset),
+            Self::MegaDrive   (serial) => serial.serialize(tileset),
+            Self::NeoGeoPocket(serial) => serial.serialize(tileset),
+            Self::NeoGeo      (serial) => serial.serialize(tileset),
+        }
+    }
+}
+
+impl SerializeTileSet for ProfileFamicom {
+    /// Serialize the tileset in a Famicom compatible layout
+    fn serialize(&self, tileset: &TileSet) -> Bytes {
+        let bits: BitVec<u8, Lsb0> = match self.bitplane {
+            BitplaneFamicom::Bpp1 => SerialMono.serialize(tileset),
+            BitplaneFamicom::Bpp2 => SerialTileSplit::new(2).serialize(tileset),
+        };
+        Bytes::copy_from_slice(bits.as_raw_slice())
+    }
+}
+
+impl SerializeTileSet for ProfileSuperFamicom {
+    /// Serialize the tileset in a Super Famicom compatible layout
+    fn serialize(&self, tileset: &TileSet) -> Bytes {
+        let bits: BitVec<u8, Lsb0> = match self.bitplane {
+            BitplaneSuperFamicom::Bpp2 => SerialTileSplit::new(2).serialize(tileset),
+            BitplaneSuperFamicom::Bpp4 => SerialInterleave::new(4).serialize(tileset),
+            BitplaneSuperFamicom::Bpp8 => SerialInterleave::new(8).serialize(tileset),
+            BitplaneSuperFamicom::Mode7 => SerialLinear::new(8).serialize(tileset),
+        };
+        Bytes::copy_from_slice(bits.as_raw_slice())
+    }
+}
+
+impl SerializeTileSet for ProfileGameBoy {
+    /// Serialize the tileset in a GameBoy compatible layout
+    fn serialize(&self, tileset: &TileSet) -> Bytes {
+        let bits: BitVec<u8, Lsb0> = SerialRowSplit::new(2).serialize(tileset);
+        Bytes::copy_from_slice(bits.as_raw_slice())
+    }
+}
+
+impl SerializeTileSet for ProfileGameBoyColor {
+    /// Serialize the tileset in a GameBoy compatible layout
+    fn serialize(&self, tileset: &TileSet) -> Bytes {
+        let bits: BitVec<u8, Lsb0> = SerialRowSplit::new(2).serialize(tileset);
+        Bytes::copy_from_slice(bits.as_raw_slice())
+    }
+}
+
+impl SerializeTileSet for ProfileVirtualBoy {
+    /// Serialize the tileset in a VirtualBoy compatible layout
+    fn serialize(&self, tileset: &TileSet) -> Bytes {
+        let bits: BitVec<u16, Msb0> = SerialLinear::new(2).serialize(tileset);
+        Bytes::copy_from_slice(cast_slice(bits.as_raw_slice()))
+    }
+}
+
+impl SerializeTileSet for ProfilePcEngine {
+    /// Serialize the tileset in a PC-Engine compatible layout
+    fn serialize(&self, tileset: &TileSet) -> Bytes {
+        match self.mode {
+            BgFg::Bg(_) => {
+                let bits: BitVec<u8, Lsb0> = SerialInterleave::new(4).serialize(tileset);
+                Bytes::copy_from_slice(bits.as_raw_slice())
+            }
+            BgFg::Fg(_) => {
+                let bits: BitVec<u16, Lsb0> = SerialTileSplit::new(4).serialize(tileset);
+                Bytes::copy_from_slice(cast_slice(bits.as_raw_slice()))
+            }
+        }
+    }
+}
+
+impl SerializeTileSet for ProfileWonderSwan {
+    /// Serialize the tileset in a WonderSwan compatible layout
+    fn serialize(&self, tileset: &TileSet) -> Bytes {
+        let bits: BitVec<u32, Msb0> = SerialLinear::new(4).serialize(tileset);
+        let buffer = Bytes::copy_from_slice(cast_slice(bits.as_raw_slice()));
+
+        // Swap the nybbles of each byte
+        let mut wbuffer = BytesMut::with_capacity(buffer.len());
+        for &byte in buffer.iter() {
+            // swap the two nybbles
+            let wbyte = (byte >> 4) | (byte << 4);
+            wbuffer.put_u8(wbyte);
+        }
+
+        wbuffer.freeze()
+    }
+}
+
+impl SerializeTileSet for ProfileMasterSystem {
+    /// Serialize the tileset in a MasterSystem compatible layout
+    fn serialize(&self, tileset: &TileSet) -> Bytes {
+        let bits: BitVec<u8, Msb0> = SerialLinear::new(4).serialize(tileset);
+        Bytes::copy_from_slice(cast_slice(bits.as_raw_slice()))
+    }
+}
+
+impl SerializeTileSet for ProfileMegaDrive {
+    /// Serialize the tileset in a MegaDrive compatible layout
+    fn serialize(&self, tileset: &TileSet) -> Bytes {
+        let bits: BitVec<u32, Msb0> = SerialLinear::new(4).serialize(tileset);
+        let buffer = Bytes::copy_from_slice(cast_slice(bits.as_raw_slice()));
+
+        // Swap the nybbles of each byte
+        let mut wbuffer = BytesMut::with_capacity(buffer.len());
+        for &byte in buffer.iter() {
+            // swap the two nybbles
+            let wbyte = (byte >> 4) | (byte << 4);
+            wbuffer.put_u8(wbyte);
+        }
+
+        wbuffer.freeze()
+    }
+}
+
+impl SerializeTileSet for ProfileNeoGeoPocket {
+    /// Serialize the tileset in a NeoGeo Pocket compatible layout
+    fn serialize(&self, tileset: &TileSet) -> Bytes {
+        let bits: BitVec<u16, Lsb0> = SerialLinear::new(2).serialize(tileset);
+        Bytes::copy_from_slice(cast_slice(bits.as_raw_slice()))
+    }
+}
+
+impl SerializeTileSet for ProfileNeoGeo {
+    /// Serialize the tileset in a NeoGeo compatible layout
+    fn serialize(&self, tileset: &TileSet) -> Bytes {
+        todo!()
+    }
+}
+
+// MARK: Strategies
 
 /// Define a serialization strategy for the tileset
-pub(crate) trait SerialStrategy<T, O>
+trait SerialStrategy<T, O>
 where
     T: BitStore,
     O: BitOrder,
@@ -13,42 +171,42 @@ where
 }
 
 /// Serialize the tileset where one pixel corresponds to one bit
-pub struct SerialMono;
+struct SerialMono;
 
 /// Serialize the tileset linearly
-pub struct SerialLinear {
+struct SerialLinear {
     /// How many bits are used to define a pixel
-    pub(crate) bits_per_pixel: usize,
+    bits_per_pixel: usize,
 }
 
 /// Serialize the tileset as distinct bitplanes
-pub struct SerialPlaneSplit {
+struct SerialPlaneSplit {
     /// How many bits are used to define a pixel
-    pub(crate) bits_per_pixel: usize,
+    bits_per_pixel: usize,
 }
 
 /// Serialize the tileset by splitting each tile
-pub struct SerialTileSplit {
+struct SerialTileSplit {
     /// How many bits are used to define a pixel
-    pub(crate) bits_per_pixel: usize,
+    bits_per_pixel: usize,
 }
 
 /// Serialize the tileset by splitting each row
-pub struct SerialRowSplit {
+struct SerialRowSplit {
     /// How many bits are used to define a pixel
-    pub(crate) bits_per_pixel: usize,
+    bits_per_pixel: usize,
 }
 
 /// Serialize the tileset by serializing pairs of bit planes
-pub struct SerialInterleave {
+struct SerialInterleave {
     /// How many bits are used to define a pixel
-    pub(crate) bits_per_pixel: usize,
+    bits_per_pixel: usize,
 }
 
 impl SerialLinear {
     /// Define linear layout serialization
     #[inline]
-    pub const fn new(bits_per_pixel: usize) -> Self {
+    const fn new(bits_per_pixel: usize) -> Self {
         Self { bits_per_pixel }
     }
 }
@@ -56,7 +214,7 @@ impl SerialLinear {
 impl SerialPlaneSplit {
     /// Define splitted bitplane layout serialization
     #[inline]
-    pub const fn new(bits_per_pixel: usize) -> Self {
+    const fn new(bits_per_pixel: usize) -> Self {
         Self { bits_per_pixel }
     }
 }
@@ -64,7 +222,7 @@ impl SerialPlaneSplit {
 impl SerialTileSplit {
     /// Define splitted tiles layout serialization
     #[inline]
-    pub const fn new(bits_per_pixel: usize) -> Self {
+    const fn new(bits_per_pixel: usize) -> Self {
         Self { bits_per_pixel }
     }
 }
@@ -72,7 +230,7 @@ impl SerialTileSplit {
 impl SerialRowSplit {
     /// Define splitted rows layout serialization
     #[inline]
-    pub const fn new(bits_per_pixel: usize) -> Self {
+    const fn new(bits_per_pixel: usize) -> Self {
         Self { bits_per_pixel }
     }
 }
@@ -80,7 +238,7 @@ impl SerialRowSplit {
 impl SerialInterleave {
     /// Define interleave layout serialization
     #[inline]
-    pub const fn new(bits_per_pixel: usize) -> Self {
+    const fn new(bits_per_pixel: usize) -> Self {
         Self { bits_per_pixel }
     }
 }

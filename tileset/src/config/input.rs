@@ -1,6 +1,6 @@
 //! Input data to process.
 
-use crate::data::{coords::TileSize, mapping::Mapping, palette::PaletteSetRgba};
+use crate::data::{coords::TileSize, mapping::CharacterMapping, palette::PaletteSetRgba};
 use asefile::AsepriteFile;
 use image::RgbaImage;
 use serde::Deserialize;
@@ -74,7 +74,7 @@ pub enum InputImage {
         image: RgbaImage,
 
         /// Fixed mapping for the tiles
-        mapping: Mapping,
+        mapping: CharacterMapping,
     },
 
     /// Animated sprite from Aseprite

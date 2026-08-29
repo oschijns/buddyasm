@@ -5,17 +5,6 @@ use buddyasm_common::{
     clap::{self, Parser},
     manifest::{Manifest, load_manifest},
 };
-use buddyasm_tileset::{
-    config::profile::Profile,
-    prelude::*,
-    process::{output, process_stack},
-    render::{build_renderer, render},
-    serial::{
-        SerialTile,
-        profile::Serial,
-        tile_data::{TileData, encode_tiles},
-    },
-};
 use image::EncodableLayout;
 use std::{
     env,
@@ -26,6 +15,7 @@ use std::{
 };
 
 fn main() -> Result<(), anyhow::Error> {
+    /*
     // Read command-line arguments
     let args = Cli::parse();
 
@@ -135,6 +125,7 @@ fn main() -> Result<(), anyhow::Error> {
             render(&tera, &template.to_string_lossy(), &entry.image, &mut file)?;
         }
     }
+    */
 
     Ok(())
 }

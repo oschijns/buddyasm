@@ -5,7 +5,7 @@ use crate::{
         input::{InputEntry, InputImage, InputStack},
         profile::{Hardware, Profile, TileKind, ToConfig},
     },
-    data::{coords::Dimensions, mapping::Mapping, palette::PaletteSetRgba},
+    data::{coords::Dimensions, mapping::CharacterMapping, palette::PaletteSetRgba},
 };
 use asefile::{AsepriteFile, AsepriteParseError};
 use buddyasm_common::manifest::Manifest;
@@ -390,7 +390,7 @@ impl InputStack {
                         let image = if !entry.mapping.is_empty() {
                             // When a fixed mapping is required processing mapping data
                             let dims = Dimensions::from_img(image.dimensions(), tile_size);
-                            let mapping = Mapping::from_ranges(dims, &entry.mapping);
+                            let mapping = CharacterMapping::from_ranges(dims, &entry.mapping);
                             InputImage::FixedPosition { image, mapping }
                         } else {
                             // Static image to process

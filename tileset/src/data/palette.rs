@@ -1,6 +1,6 @@
 //! Palette
 
-use crate::data::tile::{Pix, Tile};
+use crate::data::tileset::{Pix, Tile};
 use core::ops::Deref;
 use image::{
     EncodableLayout, ImageBuffer, ImageReader, ImageResult, Luma, LumaA, Pixel, Rgb, Rgba,
