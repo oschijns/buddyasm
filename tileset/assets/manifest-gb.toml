@@ -23,9 +23,9 @@ output = "../../output/gb"
 includes = []
 
 # Override delimiters
-delimiter_block = "<%%>"
-delimiter_variable = "<::>"
-delimiter_comment = "<##>"
+delimiter_block = "{%%}"
+delimiter_variable = "{{}}"
+delimiter_comment = "{##}"
 
 # List of entries to process
 

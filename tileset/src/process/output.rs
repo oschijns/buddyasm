@@ -3,7 +3,7 @@
 use crate::data::{flip::Flip, tile::TileSet};
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, path::PathBuf, rc::Rc};
 
 /// TileSet generated and associated index maps
 #[derive(Debug)]
@@ -26,7 +26,7 @@ pub struct OutputEntry {
 
     /// Path to the template file to use for the output entry
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub template: Option<String>,
+    pub template: Option<PathBuf>,
 
     /// Main image data for the output entry
     #[serde(flatten)]
@@ -40,7 +40,7 @@ impl OutputEntry {
         name: String,
         image: OutputImage,
         output_json: bool,
-        template: Option<String>,
+        template: Option<PathBuf>,
     ) -> Self {
         Self {
             name,
@@ -105,28 +105,36 @@ pub enum OutputAnimation {
 
 /// Indexes map to reconstruct the pictural data
 #[derive(Debug, Clone)]
-pub struct IndexMap(pub(crate) Rc<Array2<IndexTile>>);
+pub struct IndexMap(pub(crate) Rc<RefCell<Array2<OutTile>>>);
 
 /// Indexes to reconstruct the pictural data
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct IndexTile {
+pub struct OutTile {
     /// Index of the tile
-    pub(crate) tile_index: usize,
+    pub tile_index: usize,
 
     /// Index of the palette
-    pub(crate) palette_index: usize,
+    pub palette_index: usize,
 
     /// Flip horizontally and/or vertically
-    pub(crate) flip: Flip,
+    pub flip: Flip,
 
-    /// Encoded tile index for the target system
-    pub(crate) index: u16,
-
-    /// Encoded tile attributes for the target system
-    pub(crate) attr: u16,
+    /// Tile data encoded for the target system
+    #[serde(flatten, default)]
+    pub encoded: EncodedTile,
 }
 
-impl IndexTile {
+/// Encoded tile for the target system
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EncodedTile {
+    /// Encoded tile index for the target system
+    pub index: u16,
+
+    /// Encoded tile attributes for the target system
+    pub attr: u16,
+}
+
+impl OutTile {
     /// Create index data for a tile
     #[inline]
     pub fn new(tile_index: usize, palette_index: usize, flip: Flip) -> Self {
@@ -134,8 +142,7 @@ impl IndexTile {
             tile_index,
             palette_index,
             flip,
-            index: 0,
-            attr: 0,
+            encoded: Default::default(),
         }
     }
 }
@@ -143,8 +150,8 @@ impl IndexTile {
 impl IndexMap {
     /// Create a new index map
     #[inline]
-    pub fn new(data: Array2<IndexTile>) -> Self {
-        Self(Rc::new(data))
+    pub fn new(data: Array2<OutTile>) -> Self {
+        Self(Rc::new(RefCell::new(data)))
     }
 }
 
@@ -162,7 +169,7 @@ impl<'de> Deserialize<'de> for IndexMap {
     where
         D: serde::Deserializer<'de>,
     {
-        let data: Array2<IndexTile> = serde::Deserialize::deserialize(deserializer)?;
+        let data: Array2<OutTile> = serde::Deserialize::deserialize(deserializer)?;
         Ok(IndexMap::new(data))
     }
 }

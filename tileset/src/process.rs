@@ -46,13 +46,6 @@ pub fn process_stack(input: &InputStack) -> Result<OutputStack, OutputStackError
 
     // Process each element in the input stack
     for entry in input.stack.iter() {
-        // Convert the template path to a string if it exists
-        let template = if let Some(t) = &entry.template {
-            Some(t.to_string_lossy().to_string())
-        } else {
-            None
-        };
-
         match &entry.image {
             // Input is a common static image
             InputImage::Static(image) => match builder.process(image, &entry.palette) {
@@ -61,7 +54,7 @@ pub fn process_stack(input: &InputStack) -> Result<OutputStack, OutputStackError
                         entry.name.clone(),
                         OutputImage::Static(index),
                         entry.output_json,
-                        template,
+                        entry.template.clone(),
                     ));
                 }
                 Err(err) => {

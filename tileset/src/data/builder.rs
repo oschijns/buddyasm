@@ -9,7 +9,7 @@ use crate::{
         palette::PaletteSet,
         tile::{Tile, TileSet},
     },
-    process::output::{IndexMap, IndexTile},
+    process::output::{IndexMap, OutTile},
 };
 use core::ops::Deref;
 use image::{EncodableLayout, GenericImageView, ImageBuffer, Pixel};
@@ -145,7 +145,7 @@ impl TileMapBuilder {
         let dims = Dimensions::from_img(img.dimensions(), tile_size);
 
         // Create a container to store index data
-        let mut index_map = Array2::<IndexTile>::default(Ix2::from(dims));
+        let mut index_map = Array2::<OutTile>::default(Ix2::from(dims));
 
         // Push errors into this list
         let mut errors = Vec::<TileError>::new();
@@ -169,14 +169,14 @@ impl TileMapBuilder {
                     if let Some((tile_idx, flip)) = self.tile_to_index.get(&tile) {
                         // The tile already exists in the set,
                         // store the corresponding index in the index map.
-                        index_map[ix2] = IndexTile::new(*tile_idx, pal_idx, *flip);
+                        index_map[ix2] = OutTile::new(*tile_idx, pal_idx, *flip);
                     } else if let Some((tile_idx, _)) =
                         self.vacancy.iter().find_position(|&&vacant| vacant)
                     {
                         // If we cannot find a matching tile in the set,
                         // add the new tile to the set at the first available slot.
                         self.set_tile(tile_idx, tile);
-                        index_map[ix2] = IndexTile::new(tile_idx, pal_idx, Flip::None);
+                        index_map[ix2] = OutTile::new(tile_idx, pal_idx, Flip::None);
                     } else {
                         // We tried to store the new tile in the set, but there are no more room.
                         errors.push(TileError::DistinctOverflow(coords));

@@ -25,6 +25,6 @@ pub mod prelude {
         tile::{Pix, Tile, TileSet},
     };
     pub use crate::process::output::{
-        IndexMap, IndexTile, OutputAnimation, OutputImage, OutputStack,
+        IndexMap, OutTile, OutputAnimation, OutputImage, OutputStack,
     };
 }

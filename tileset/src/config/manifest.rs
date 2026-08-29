@@ -252,25 +252,17 @@ pub enum InputError {
 }
 
 /// Load an input stack from the provided config
-impl TryFrom<TileSetManifest> for InputStack {
-    type Error = InputStackError;
-
-    fn try_from(value: TileSetManifest) -> Result<Self, Self::Error> {
-        let profile = Profile::new(
-            value.config.hardware,
-            value.config.kind,
-            value.config.sprite_size.as_deref(),
-        )
-        .expect("Invalid config in hardware specification");
+impl InputStack {
+    pub fn new(profile: &Profile, manifest: &TileSetManifest) -> Result<Self, InputStackError> {
         let config = profile.to_config();
         let tile_size = config.tile_size();
 
         // Collect errors encountered
-        let mut errors = Vec::with_capacity(value.entries.len());
+        let mut errors = Vec::with_capacity(manifest.entries.len());
 
         // Load the default palette
-        let palette = if let Some(path) = &value.config.default_palette {
-            let path = value.evaluate_path(path);
+        let palette = if let Some(path) = &manifest.config.default_palette {
+            let path = manifest.evaluate_path(path);
             match PaletteSetRgba::load_palette(&path) {
                 Ok(palette) => Some(palette),
                 Err(err) => {
@@ -287,13 +279,13 @@ impl TryFrom<TileSetManifest> for InputStack {
         let mut tiled_loader = tiled::Loader::new();
 
         // Build a stack from the provided entries
-        let mut stack = Vec::with_capacity(value.entries.len());
+        let mut stack = Vec::with_capacity(manifest.entries.len());
 
         // Process the entries
-        for entry in value.entries.iter() {
+        for entry in manifest.entries.iter() {
             // Check if we have a palette override for this entry
             let palette = if let Some(path_palette) = &entry.palette {
-                let path = value.evaluate_path(path_palette);
+                let path = manifest.evaluate_path(path_palette);
                 match PaletteSetRgba::load_palette(&path) {
                     Ok(palette) => palette,
                     Err(err) => {
@@ -311,7 +303,7 @@ impl TryFrom<TileSetManifest> for InputStack {
             };
 
             // Resolve the image path
-            let img_path = value.evaluate_path(&entry.image);
+            let img_path = manifest.evaluate_path(&entry.image);
 
             // Resolve the name of the entry (either set in the manifest or the file name)
             let name = if let Some(name) = &entry.name {
@@ -323,8 +315,10 @@ impl TryFrom<TileSetManifest> for InputStack {
                 continue;
             };
 
-            // Resolve the path to the template file if one is specified
-            let template_path = entry.template.as_deref().map(|t| value.evaluate_path(t));
+            // Keep the template path as given: it is used as the lookup key
+            // for the Tera instance, which registers templates under their
+            // path relative to the manifest (see `render::build_renderer`).
+            let template_path = entry.template.clone();
 
             // Get the extension of the file
             let Some(ext) = img_path.extension() else {

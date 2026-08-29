@@ -6,10 +6,15 @@ use buddyasm_common::{
     manifest::{Manifest, load_manifest},
 };
 use buddyasm_tileset::{
+    config::profile::Profile,
     prelude::*,
-    process::process_stack,
+    process::{output, process_stack},
     render::{build_renderer, render},
-    serial::{SerialTile, profile::Serial},
+    serial::{
+        SerialTile,
+        profile::Serial,
+        tile_data::{TileData, encode_tiles},
+    },
 };
 use image::EncodableLayout;
 use std::{
@@ -35,6 +40,13 @@ fn main() -> Result<(), anyhow::Error> {
     };
     let manifest = load_manifest::<TileSetManifest, _>(&man_path)?;
 
+    // Create a profile for the target hardware
+    let profile = Profile::new(
+        manifest.config.hardware,
+        manifest.config.kind,
+        manifest.config.sprite_size.as_deref(),
+    )?;
+
     // Create the serializer for the processed tilesets
     let serial = Serial::new(
         manifest.config.hardware,
@@ -59,14 +71,49 @@ fn main() -> Result<(), anyhow::Error> {
     )?;
 
     // Create the input stack to process and generate the output stack
-    let input = InputStack::try_from(manifest)?;
-    let output = process_stack(&input)?;
+    let input = InputStack::new(&profile, &manifest)?;
+    let mut output = process_stack(&input)?;
 
     // serialize the result
     let bits = serial.serialize(&output.tileset);
     let out_path = Path::new(&out_path).to_path_buf().canonicalize()?;
     let mut file = File::create(out_path.join("tileset.chr"))?;
     file.write_all(bits.as_bytes())?;
+
+    // Generate encoded tile data
+    for entry in output.entries.iter_mut() {
+        match &mut entry.image {
+            OutputImage::Static(index_map) => {
+                encode_tiles(&profile, index_map);
+            }
+            OutputImage::Animated(hash_map) => {
+                for anim in hash_map.values_mut() {
+                    match anim {
+                        OutputAnimation::Normal(map) => encode_tiles(&profile, map),
+                        OutputAnimation::LeftRight { left, right } => {
+                            encode_tiles(&profile, left);
+                            encode_tiles(&profile, right);
+                        }
+                        OutputAnimation::UpDown { up, down } => {
+                            encode_tiles(&profile, up);
+                            encode_tiles(&profile, down);
+                        }
+                        OutputAnimation::FourWays {
+                            up_left,
+                            up_right,
+                            down_left,
+                            down_right,
+                        } => {
+                            encode_tiles(&profile, up_left);
+                            encode_tiles(&profile, up_right);
+                            encode_tiles(&profile, down_left);
+                            encode_tiles(&profile, down_right);
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     // serialize the output stack
     for entry in &output.entries {
@@ -79,10 +126,13 @@ fn main() -> Result<(), anyhow::Error> {
         }
 
         // Generate the source file if requested
-        if let Some(template_name) = &entry.template {
-            let path_file = out_path.join(&entry.name);
+        if let Some(template) = &entry.template {
+            let mut path_file = out_path.join(&entry.name);
+            if let Some(ext) = template.extension() {
+                path_file.set_extension(ext);
+            }
             let mut file = File::create(path_file)?;
-            render(&tera, template_name, &entry.image, &mut file)?;
+            render(&tera, &template.to_string_lossy(), &entry.image, &mut file)?;
         }
     }
 

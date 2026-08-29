@@ -4,16 +4,16 @@
 
 static const uint8_t tiles_index [] =
 {
-{# Write tile indexes #}
-{% for tile in data %}
+{#- Write tile indexes #}
+{%- for tile in data %}
     {{ tile.index | hex }},
-{% endfor %}
+{%- endfor %}
 };
 
 static const uint8_t tiles_attr [] =
 {
-{# Write tile attributes #}
-{% for tile in data %}
+{#- Write tile attributes #}
+{%- for tile in data %}
     {{ tile.attr | hex }},
-{% endfor %}
+{%- endfor %}
 };
