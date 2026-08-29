@@ -1,4 +1,5 @@
 
+# Main configuration section
 [config]
 
 # Target hardware
@@ -13,12 +14,20 @@ default_palette = "palette.png"
 # Where to output the processed tileset
 output = "../../output/gb"
 
+
+# Templating configuration
+[templating]
+
 # Optional template includes
 # Can be either paths or glob patterns
-template_includes = [
+includes = []
 
-]
+# Override delimiters
+delimiter_block = "<%%>"
+delimiter_variable = "<::>"
+delimiter_comment = "<##>"
 
+# List of entries to process
 
 [[entry]]
 

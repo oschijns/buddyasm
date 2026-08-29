@@ -3,7 +3,7 @@
 use crate::data::{flip::Flip, tile::TileSet};
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::PathBuf, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
 
 /// TileSet generated and associated index maps
 #[derive(Debug)]
@@ -111,23 +111,31 @@ pub struct IndexMap(pub(crate) Rc<Array2<IndexTile>>);
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IndexTile {
     /// Index of the tile
-    pub(crate) tile: usize,
+    pub(crate) tile_index: usize,
 
     /// Index of the palette
-    pub(crate) palette: usize,
+    pub(crate) palette_index: usize,
 
     /// Flip horizontally and/or vertically
     pub(crate) flip: Flip,
+
+    /// Encoded tile index for the target system
+    pub(crate) index: u16,
+
+    /// Encoded tile attributes for the target system
+    pub(crate) attr: u16,
 }
 
 impl IndexTile {
     /// Create index data for a tile
     #[inline]
-    pub fn new(tile: usize, palette: usize, flip: Flip) -> Self {
+    pub fn new(tile_index: usize, palette_index: usize, flip: Flip) -> Self {
         Self {
-            tile,
-            palette,
+            tile_index,
+            palette_index,
             flip,
+            index: 0,
+            attr: 0,
         }
     }
 }

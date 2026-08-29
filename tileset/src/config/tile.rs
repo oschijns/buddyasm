@@ -220,12 +220,8 @@ pub enum SpriteNeoGeoPocket {
 pub struct ParseError(pub(crate) String);
 
 /// Specify if we are processing tile or sprite data
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-pub enum TileOrSprite<T, S>
-where
-    T: Clone + PartialEq,
-    S: Clone + PartialEq,
-{
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+pub enum TileOrSprite<T, S> {
     /// Tile data
     Tile(T),
 
@@ -233,11 +229,7 @@ where
     Sprite(S),
 }
 
-impl<T, S> TileOrSprite<T, S>
-where
-    T: Clone + PartialEq + Default,
-    S: Clone + PartialEq,
-{
+impl<T: Default, S> TileOrSprite<T, S> {
     /// We are making tiles
     #[inline]
     pub fn default_tile() -> Self {
@@ -245,17 +237,18 @@ where
     }
 }
 
-impl<'s, T, S> TileOrSprite<T, S>
-where
-    T: Clone + PartialEq,
-    S: Clone + PartialEq + Default + FromStr,
-{
+impl<T, S: Default> TileOrSprite<T, S> {
     /// We are making sprites
     #[inline]
     pub fn default_sprite() -> Self {
         Self::Sprite(S::default())
     }
+}
 
+impl<'s, T, S> TileOrSprite<T, S>
+where
+    S: Default + FromStr,
+{
     /// We are making sprites
     #[inline]
     pub fn sprite(sprite_size: Option<&'s str>) -> Result<Self, ParseError> {
@@ -367,11 +360,7 @@ impl TileConfig for SpriteNeoGeoPocket {
     }
 }
 
-impl<T, S> Default for TileOrSprite<T, S>
-where
-    T: Clone + PartialEq + Default,
-    S: Clone + PartialEq,
-{
+impl<T: Default, S> Default for TileOrSprite<T, S> {
     fn default() -> Self {
         Self::Tile(Default::default())
     }
@@ -379,8 +368,8 @@ where
 
 impl<T, S> TileConfig for TileOrSprite<T, S>
 where
-    T: TileConfig + Clone + PartialEq,
-    S: TileConfig + Clone + PartialEq,
+    T: TileConfig,
+    S: TileConfig,
 {
     fn flipping(&self) -> [bool; 2] {
         match self {

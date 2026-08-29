@@ -22,11 +22,16 @@ pub struct TileSetManifest {
     path: PathBuf,
 
     /// Main configuration
+    #[serde(alias = "configuration")]
     pub config: Config,
 
+    /// Templating configuration
+    #[serde(alias = "template")]
+    pub templating: Option<Templating>,
+
     /// Entries to process
-    #[serde(alias = "entry")]
-    pub(crate) entries: Vec<Entry>,
+    #[serde(rename = "entry")]
+    pub entries: Vec<Entry>,
 }
 
 /// Configure main components such as default palette and target hardware
@@ -59,10 +64,92 @@ pub struct Config {
     /// If not specified, defaults to `tileset.chr` in the output directory.
     #[serde(default)]
     pub file_chr: Option<PathBuf>,
+}
 
+/// Templating configuration
+#[derive(Debug, Clone, Deserialize)]
+pub struct Templating {
     /// List of templates includes if any.
-    #[serde(default)]
-    pub template_includes: Vec<PathBuf>,
+    #[serde(default, alias = "include")]
+    pub includes: Vec<PathBuf>,
+
+    /// Prefix for binary literals
+    /// Defaults to `0b`
+    #[serde(default = "prefix_bin")]
+    pub prefix_bin: String,
+
+    /// Prefix for octal literals
+    /// Defaults to `0o`
+    #[serde(default = "prefix_oct")]
+    pub prefix_oct: String,
+
+    /// Prefix for hexadecimal literals
+    /// Defaults to `0x`
+    #[serde(default = "prefix_hex")]
+    pub prefix_hex: String,
+
+    /// Override delimiter for template blocks
+    /// Defaults to `{%%}`
+    #[serde(default = "delimiter_block")]
+    pub delimiter_block: String,
+
+    /// Override delimiter for template variables
+    /// Defaults to `{{}}`
+    #[serde(default = "delimiter_variable")]
+    pub delimiter_variable: String,
+
+    /// Override delimiter for template comments
+    /// Defaults to `{##}`
+    #[serde(default = "delimiter_comment")]
+    pub delimiter_comment: String,
+}
+
+/// Default prefix for binary literals
+pub const PREFIX_BIN: &str = "0b";
+
+/// Default prefix for octal literals
+pub const PREFIX_OCT: &str = "0o";
+
+/// Default prefix for hexadecimal literals
+pub const PREFIX_HEX: &str = "0x";
+
+/// Default delimiter for template blocks
+pub const DELIMITER_BLOCK: &str = "{%%}";
+
+/// Default delimiter for template variables
+pub const DELIMITER_VARIABLE: &str = "{{}}";
+
+/// Default delimiter for template comments
+pub const DELIMITER_COMMENT: &str = "{##}";
+
+#[inline]
+fn prefix_bin() -> String {
+    PREFIX_BIN.to_string()
+}
+
+#[inline]
+fn prefix_oct() -> String {
+    PREFIX_OCT.to_string()
+}
+
+#[inline]
+fn prefix_hex() -> String {
+    PREFIX_HEX.to_string()
+}
+
+#[inline]
+fn delimiter_block() -> String {
+    DELIMITER_BLOCK.to_string()
+}
+
+#[inline]
+fn delimiter_variable() -> String {
+    DELIMITER_VARIABLE.to_string()
+}
+
+#[inline]
+fn delimiter_comment() -> String {
+    DELIMITER_COMMENT.to_string()
 }
 
 /// An input image to load
@@ -81,7 +168,7 @@ pub struct Entry {
 
     /// Optional fixed mapping
     #[serde(default)]
-    pub(crate) mapping: Option<Vec<MapRange>>,
+    pub(crate) mapping: Vec<MapRange>,
 
     /// Specify if the entry should generate a JSON file.
     /// This is used to visualize the mapping of tiles to indices.
@@ -306,10 +393,10 @@ impl TryFrom<TileSetManifest> for InputStack {
                         let image = image.to_rgba8();
 
                         // Check if we require a fixed mapping
-                        let image = if let Some(ranges) = &entry.mapping {
+                        let image = if !entry.mapping.is_empty() {
                             // When a fixed mapping is required processing mapping data
                             let dims = Dimensions::from_img(image.dimensions(), tile_size);
-                            let mapping = Mapping::from_ranges(dims, ranges);
+                            let mapping = Mapping::from_ranges(dims, &entry.mapping);
                             InputImage::FixedPosition { image, mapping }
                         } else {
                             // Static image to process

@@ -1,18 +1,18 @@
 //! Process pictures to generate a unified tileset
 
 use buddyasm_common::{
-    anyhow::{self, anyhow},
+    anyhow,
     clap::{self, Parser},
     manifest::{Manifest, load_manifest},
 };
 use buddyasm_tileset::{
     prelude::*,
     process::process_stack,
+    render::{build_renderer, render},
     serial::{SerialTile, profile::Serial},
 };
 use image::EncodableLayout;
 use std::{
-    collections::{BTreeMap, HashMap},
     env,
     ffi::OsString,
     fs::File,
@@ -51,6 +51,13 @@ fn main() -> Result<(), anyhow::Error> {
         current_directory.join("output")
     };
 
+    // We need a renderer for generating the sources
+    let tera = build_renderer(
+        &manifest.get_path(),
+        &manifest.templating,
+        &manifest.entries,
+    )?;
+
     // Create the input stack to process and generate the output stack
     let input = InputStack::try_from(manifest)?;
     let output = process_stack(&input)?;
@@ -63,11 +70,19 @@ fn main() -> Result<(), anyhow::Error> {
 
     // serialize the output stack
     for entry in &output.entries {
+        // Generate the output JSON if requested
         if entry.output_json {
             let mut path_file = out_path.join(&entry.name);
             path_file.set_extension("json");
             let mut file = File::create(path_file)?;
             serde_json::to_writer_pretty(&mut file, &entry.image)?;
+        }
+
+        // Generate the source file if requested
+        if let Some(template_name) = &entry.template {
+            let path_file = out_path.join(&entry.name);
+            let mut file = File::create(path_file)?;
+            render(&tera, template_name, &entry.image, &mut file)?;
         }
     }
 

@@ -2,8 +2,8 @@
 
 use crate::{
     config::profile::{
-        ProfileFamicom, ProfileGameBoy, ProfileGameBoyColor, ProfileMasterSystem, ProfileMegaDrive,
-        ProfileNeoGeo, ProfileNeoGeoPocket, ProfilePcEngine, ProfileSuperFamicom,
+        Profile, ProfileFamicom, ProfileGameBoy, ProfileGameBoyColor, ProfileMasterSystem,
+        ProfileMegaDrive, ProfileNeoGeo, ProfileNeoGeoPocket, ProfilePcEngine, ProfileSuperFamicom,
         ProfileVirtualBoy, ProfileWonderSwan,
     },
     process::output::IndexTile,
@@ -14,6 +14,25 @@ use crate::{
 /// Depending on the platform, the words should be read as 8-bits or 16-bits values.
 pub trait TileData {
     fn encode_tile(&self, tile: IndexTile) -> [u16; 2];
+}
+
+impl TileData for Profile {
+    fn encode_tile(&self, tile: IndexTile) -> [u16; 2] {
+        #[cfg_attr(cfg, rustfmt::skip)]
+        match self {
+            Profile::Famicom     (profile) => profile.encode_tile(tile),
+            Profile::SuperFamicom(profile) => profile.encode_tile(tile),
+            Profile::GameBoy     (profile) => profile.encode_tile(tile),
+            Profile::GameBoyColor(profile) => profile.encode_tile(tile),
+            Profile::VirtualBoy  (profile) => profile.encode_tile(tile),
+            Profile::PcEngine    (profile) => profile.encode_tile(tile),
+            Profile::WonderSwan  (profile) => profile.encode_tile(tile),
+            Profile::MasterSystem(profile) => profile.encode_tile(tile),
+            Profile::MegaDrive   (profile) => profile.encode_tile(tile),
+            Profile::NeoGeoPocket(profile) => profile.encode_tile(tile),
+            Profile::NeoGeo      (profile) => profile.encode_tile(tile),
+        }
+    }
 }
 
 /// Encode tile data for the Famicom platform
@@ -29,9 +48,9 @@ impl TileData for ProfileFamicom {
          * P: priority
          * C: color palette index
          */
-        let index = (tile.tile & 0xFF) as u16;
+        let index = (tile.tile_index & 0xFF) as u16;
         let flip = self.encode_flip(tile.flip);
-        let palette = (tile.palette & 0b11) as u16;
+        let palette = (tile.palette_index & 0b11) as u16;
         let attr = flip | palette;
         [index, attr]
     }
@@ -51,10 +70,10 @@ impl TileData for ProfileSuperFamicom {
          * C: color palette index
          * I: tile index (high bit) (aka name select)
          */
-        let index = (tile.tile & 0xFF) as u16;
+        let index = (tile.tile_index & 0xFF) as u16;
         let flip = self.encode_flip(tile.flip);
-        let palette = ((tile.palette & 0b111) << 1) as u16;
-        let high = if tile.tile < 0x100 { 0u16 } else { 1u16 };
+        let palette = ((tile.palette_index & 0b111) << 1) as u16;
+        let high = if tile.tile_index < 0x100 { 0u16 } else { 1u16 };
         let attr = flip | palette | high;
         [index, attr]
     }
@@ -73,9 +92,13 @@ impl TileData for ProfileGameBoy {
          * H: horizontal flip
          * C: DMG palette index
          */
-        let index = (tile.tile & 0xFF) as u16;
+        let index = (tile.tile_index & 0xFF) as u16;
         let flip = self.encode_flip(tile.flip);
-        let palette = if tile.palette == 0 { 0u16 } else { 0b1_0000 };
+        let palette = if tile.palette_index == 0 {
+            0u16
+        } else {
+            0b1_0000
+        };
         let attr = flip | palette;
         [index, attr]
     }
@@ -95,9 +118,9 @@ impl TileData for ProfileGameBoyColor {
          * B: bank
          * C: color palette index
          */
-        let index = (tile.tile & 0xFF) as u16;
+        let index = (tile.tile_index & 0xFF) as u16;
         let flip = self.encode_flip(tile.flip);
-        let palette = (tile.palette & 0b111) as u16;
+        let palette = (tile.palette_index & 0b111) as u16;
         let attr = flip | palette;
         [index, attr]
     }
@@ -116,10 +139,10 @@ impl TileData for ProfileVirtualBoy {
          * V: vertical flip
          * I: tile index (high bits)
          */
-        let index = (tile.tile & 0xFF) as u16;
-        let palette = ((tile.palette & 0b11) << 14) as u16;
+        let index = (tile.tile_index & 0xFF) as u16;
+        let palette = ((tile.palette_index & 0b11) << 14) as u16;
         let flip = self.encode_flip(tile.flip);
-        let high = ((tile.tile >> 16) & 0b111) as u16;
+        let high = ((tile.tile_index >> 16) & 0b111) as u16;
         let attr = palette | flip | high;
         [index, attr]
     }
@@ -140,9 +163,9 @@ impl TileData for ProfilePcEngine {
          * P: priority
          * C: color palette index
          */
-        let index = (tile.tile & 0xFF) as u16;
+        let index = (tile.tile_index & 0xFF) as u16;
         let flip = self.encode_flip(tile.flip);
-        let palette = (tile.palette & 0b1111) as u16;
+        let palette = (tile.palette_index & 0b1111) as u16;
         let attr = palette | flip;
         [index, attr]
     }
@@ -163,10 +186,10 @@ impl TileData for ProfileWonderSwan {
          * C: color palette index
          * I: tile index (high bits)
          */
-        let index = (tile.tile & 0xFF) as u16;
+        let index = (tile.tile_index & 0xFF) as u16;
         let flip = self.encode_flip(tile.flip);
-        let palette = ((tile.palette & 0b111) << 1) as u16;
-        let high = if tile.tile < 0x100 { 0u16 } else { 1u16 };
+        let palette = ((tile.palette_index & 0b111) << 1) as u16;
+        let high = if tile.tile_index < 0x100 { 0u16 } else { 1u16 };
         let attr = palette | flip | high;
         [index, attr]
     }
@@ -177,7 +200,7 @@ impl TileData for ProfileWonderSwan {
 impl TileData for ProfileMasterSystem {
     fn encode_tile(&self, tile: IndexTile) -> [u16; 2] {
         /* no attributes */
-        let index = (tile.tile & 0xFF) as u16;
+        let index = (tile.tile_index & 0xFF) as u16;
         [index, 0u16]
     }
 }
@@ -196,10 +219,10 @@ impl TileData for ProfileMegaDrive {
          * H: horizontal flip
          * I: tile index (high bits)
          */
-        let index = (tile.tile & 0xFF) as u16;
-        let palette = ((tile.palette & 0b111) << 1) as u16;
+        let index = (tile.tile_index & 0xFF) as u16;
+        let palette = ((tile.palette_index & 0b111) << 1) as u16;
         let flip = self.encode_flip(tile.flip);
-        let high = ((tile.tile >> 8) & 0b111) as u16;
+        let high = ((tile.tile_index >> 8) & 0b111) as u16;
         let attr = palette | flip | high;
         [index, attr]
     }
@@ -221,10 +244,14 @@ impl TileData for ProfileNeoGeoPocket {
          * v: vertical position chain
          * I: tile index (high bits) (aka character code)
          */
-        let index = (tile.tile & 0xFF) as u16;
+        let index = (tile.tile_index & 0xFF) as u16;
         let flip = self.encode_flip(tile.flip);
-        let palette = if tile.palette == 0 { 0u16 } else { 0b10_0000 };
-        let high = if tile.tile < 0x100 { 0u16 } else { 1u16 };
+        let palette = if tile.palette_index == 0 {
+            0u16
+        } else {
+            0b10_0000
+        };
+        let high = if tile.tile_index < 0x100 { 0u16 } else { 1u16 };
         let attr = palette | flip | high;
         [index, attr]
     }
@@ -245,9 +272,9 @@ impl TileData for ProfileNeoGeo {
          * V: vertical flip
          * H: horizontal flip
          */
-        let index = (tile.tile & 0xFFFF) as u16;
-        let palette = ((tile.palette & 0xFF) << 8) as u16;
-        let high = ((tile.tile & 0xF_0000) >> 4) as u16;
+        let index = (tile.tile_index & 0xFFFF) as u16;
+        let palette = ((tile.palette_index & 0xFF) << 8) as u16;
+        let high = ((tile.tile_index & 0xF_0000) >> 4) as u16;
         let flip = self.encode_flip(tile.flip);
         let attr = palette | high | flip;
         [index, attr]

@@ -78,7 +78,7 @@ pub enum TileKind {
 }
 
 /// List all hardware profiles available
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Profile {
     /// Famicom / NES
     Famicom(ProfileFamicom),
@@ -154,7 +154,7 @@ impl Profile {
 }
 
 /// Famicom Profile
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Deserialize)]
 pub struct ProfileFamicom(pub(crate) TileOrSprite<FixedTile<false>, SpriteNintendo1>);
 
 // <TODO>
@@ -166,43 +166,43 @@ pub struct ProfileFamicom(pub(crate) TileOrSprite<FixedTile<false>, SpriteNinten
 // </TODO>
 
 /// Super Famicom Profile
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Deserialize)]
 pub struct ProfileSuperFamicom(pub(crate) TileOrSprite<FixedTile, SpriteNintendo2>);
 
 /// Game Boy Profile
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Deserialize)]
 pub struct ProfileGameBoy(pub(crate) TileOrSprite<FixedTile<false>, SpriteNintendo1>);
 
 /// Game Boy Color Profile
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Deserialize)]
 pub struct ProfileGameBoyColor(pub(crate) TileOrSprite<FixedTile, SpriteNintendo1>);
 
 /// Virtual Boy Profile
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Deserialize)]
 pub struct ProfileVirtualBoy(pub(crate) TileOrSprite<FixedTile, SpriteNintendo2>);
 
 /// PC-Engine Profile
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Deserialize)]
 pub struct ProfilePcEngine(pub(crate) TileOrSprite<FixedTile, SpritePcEngine>);
 
 /// WonderSwan Profile
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Deserialize)]
 pub struct ProfileWonderSwan(pub(crate) TileOrSprite<FixedTile, FixedTile<true, 8>>);
 
 /// Master System Profile
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Deserialize)]
 pub struct ProfileMasterSystem(pub(crate) TileOrSprite<FixedTile, SpriteSegaMS>);
 
 /// MegaDrive Profile
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Deserialize)]
 pub struct ProfileMegaDrive(pub(crate) TileOrSprite<FixedTile, SpriteSegaMD>);
 
 /// NeoGeo Pocket Profile
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Deserialize)]
 pub struct ProfileNeoGeoPocket(pub(crate) TileOrSprite<FixedTile, SpriteNeoGeoPocket>);
 
 /// NeoGeo Profile
-#[derive(Debug, Default, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Deserialize)]
 pub struct ProfileNeoGeo(pub(crate) TileOrSprite<FixedTile<true, 16>, FixedTile<true, 16>>);
 
 impl ToConfig for Profile {
