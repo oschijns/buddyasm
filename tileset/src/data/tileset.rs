@@ -1,6 +1,6 @@
 //! Tile and TileSet
 
-use crate::data::{flip::Flip, palette::to_index};
+use crate::data::{coords::TileSize, flip::Flip, palette::to_index};
 use core::hash::{Hash, Hasher};
 use ndarray::{Array2, Axis};
 use std::rc::Rc;
@@ -53,7 +53,8 @@ impl Tile {
 
     /// Create a new empty tile
     #[inline]
-    pub fn new_empty(w: u32, h: u32) -> Self {
+    pub fn new_empty(tile_size: TileSize) -> Self {
+        let [w, h] = tile_size.0;
         Self(Rc::new(Array2::zeros(to_index(w, h))))
     }
 

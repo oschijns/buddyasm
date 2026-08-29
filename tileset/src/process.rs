@@ -1,3 +1,9 @@
+/// Create a generic input config from a hardware profile
+pub mod config;
+
+/// Build an input stack from the manifest data
+pub mod prepare;
+
 /// Process the input stack and generate an output stack
 pub mod builder;
 

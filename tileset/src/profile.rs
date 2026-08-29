@@ -1,4 +1,22 @@
+use std::str::FromStr;
+
+use crate::{
+    data::{coords::TileSize, flip::Flip},
+    manifest::{System, TileKind},
+};
 use strum::EnumString;
+
+// MARK: Traits
+
+/// Get the size of the tiles for the given hardware
+pub trait GetTileSize {
+    fn tile_size(&self) -> TileSize;
+}
+
+/// Get the horizontal and vertical flipping
+pub trait GetTileFlip {
+    fn tile_flip(&self) -> Flip;
+}
 
 // MARK: Profile
 
@@ -39,6 +57,122 @@ pub enum Profile {
     NeoGeo(ProfileNeoGeo),
 }
 
+/// Error encountered when identifying the target hardware
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum IdentError {
+    #[error("Unknown bitplane: {0}")]
+    Strum(#[from] strum::ParseError),
+}
+
+impl Profile {
+    /// Build a profile given the parameters
+    #[rustfmt::skip]
+    pub fn new(
+        system: System,
+        kind: TileKind,
+        bitplane: Option<&str>,
+        sprite_size: Option<&str>,
+    ) -> Result<Self, IdentError> {
+        match kind {
+            TileKind::Background => match system {
+                System::Famicom      => Ok(Self::Famicom     (ProfileFamicom     { mode: BgFg::default_bg(), bitplane: parse_bitplane(bitplane)? })),
+                System::SuperFamicom => Ok(Self::SuperFamicom(ProfileSuperFamicom{ mode: BgFg::default_bg(), bitplane: parse_bitplane(bitplane)? })),
+                System::GameBoy      => Ok(Self::GameBoy     (ProfileGameBoy     { mode: BgFg::default_bg() })),
+                System::GameBoyColor => Ok(Self::GameBoyColor(ProfileGameBoyColor{ mode: BgFg::default_bg() })),
+                System::VirtualBoy   => Ok(Self::VirtualBoy  (ProfileVirtualBoy  { mode: BgFg::default_bg() })),
+                System::PcEngine     => Ok(Self::PcEngine    (ProfilePcEngine    { mode: BgFg::default_bg() })),
+                System::WonderSwan   => Ok(Self::WonderSwan  (ProfileWonderSwan  { mode: BgFg::default_bg() })),
+                System::MasterSystem => Ok(Self::MasterSystem(ProfileMasterSystem{ mode: BgFg::default_bg() })),
+                System::MegaDrive    => Ok(Self::MegaDrive   (ProfileMegaDrive   { mode: BgFg::default_bg() })),
+                System::NeoGeoPocket => Ok(Self::NeoGeoPocket(ProfileNeoGeoPocket{ mode: BgFg::default_bg() })),
+                System::NeoGeo       => Ok(Self::NeoGeo      (ProfileNeoGeo      { mode: Default::default() })),
+            },
+            TileKind::Foreground => match system {
+                System::Famicom      => Ok(Self::Famicom     (ProfileFamicom     { mode: parse_sprite_size(sprite_size)?, bitplane: parse_bitplane(bitplane)? })),
+                System::SuperFamicom => Ok(Self::SuperFamicom(ProfileSuperFamicom{ mode: parse_sprite_size(sprite_size)?, bitplane: parse_bitplane(bitplane)? })),
+                System::GameBoy      => Ok(Self::GameBoy     (ProfileGameBoy     { mode: parse_sprite_size(sprite_size)? })),
+                System::GameBoyColor => Ok(Self::GameBoyColor(ProfileGameBoyColor{ mode: parse_sprite_size(sprite_size)? })),
+                System::VirtualBoy   => Ok(Self::VirtualBoy  (ProfileVirtualBoy  { mode: parse_sprite_size(sprite_size)? })),
+                System::PcEngine     => Ok(Self::PcEngine    (ProfilePcEngine    { mode: parse_sprite_size(sprite_size)? })),
+                System::WonderSwan   => Ok(Self::WonderSwan  (ProfileWonderSwan  { mode: BgFg::default_fg() })),
+                System::MasterSystem => Ok(Self::MasterSystem(ProfileMasterSystem{ mode: parse_sprite_size(sprite_size)? })),
+                System::MegaDrive    => Ok(Self::MegaDrive   (ProfileMegaDrive   { mode: parse_sprite_size(sprite_size)? })),
+                System::NeoGeoPocket => Ok(Self::NeoGeoPocket(ProfileNeoGeoPocket{ mode: parse_sprite_size(sprite_size)? })),
+                System::NeoGeo       => Ok(Self::NeoGeo      (ProfileNeoGeo      { mode: Default::default() })),
+            },
+        }
+    }
+}
+
+impl GetTileSize for Profile {
+    #[rustfmt::skip]
+    fn tile_size(&self) -> TileSize {
+        match self {
+            Profile::Famicom     (profile) => profile.tile_size(),
+            Profile::SuperFamicom(profile) => profile.tile_size(),
+            Profile::GameBoy     (profile) => profile.tile_size(),
+            Profile::GameBoyColor(profile) => profile.tile_size(),
+            Profile::VirtualBoy  (profile) => profile.tile_size(),
+            Profile::PcEngine    (profile) => profile.tile_size(),
+            Profile::WonderSwan  (profile) => profile.tile_size(),
+            Profile::MasterSystem(profile) => profile.tile_size(),
+            Profile::MegaDrive   (profile) => profile.tile_size(),
+            Profile::NeoGeoPocket(profile) => profile.tile_size(),
+            Profile::NeoGeo      (profile) => profile.tile_size(),
+        }
+    }
+}
+
+impl GetTileFlip for Profile {
+    #[rustfmt::skip]
+    fn tile_flip(&self) -> Flip {
+        match self {
+            Profile::Famicom     (profile) => profile.tile_flip(),
+            Profile::SuperFamicom(profile) => profile.tile_flip(),
+            Profile::GameBoy     (profile) => profile.tile_flip(),
+            Profile::GameBoyColor(profile) => profile.tile_flip(),
+            Profile::VirtualBoy  (profile) => profile.tile_flip(),
+            Profile::PcEngine    (profile) => profile.tile_flip(),
+            Profile::WonderSwan  (profile) => profile.tile_flip(),
+            Profile::MasterSystem(profile) => profile.tile_flip(),
+            Profile::MegaDrive   (profile) => profile.tile_flip(),
+            Profile::NeoGeoPocket(profile) => profile.tile_flip(),
+            Profile::NeoGeo      (profile) => profile.tile_flip(),
+        }
+    }
+}
+
+/// Implement the traits for each hardware profile
+macro_rules! impl_traits {
+    ($profile:ty) => {
+        impl GetTileSize for $profile {
+            #[inline]
+            fn tile_size(&self) -> TileSize {
+                self.mode.tile_size()
+            }
+        }
+
+        impl GetTileFlip for $profile {
+            #[inline]
+            fn tile_flip(&self) -> Flip {
+                self.mode.tile_flip()
+            }
+        }
+    };
+}
+
+/// Implement flip trait
+macro_rules! impl_flip {
+    ($type:ty => $flip:ident) => {
+        impl GetTileFlip for $type {
+            #[inline]
+            fn tile_flip(&self) -> Flip {
+                Flip::$flip
+            }
+        }
+    };
+}
+
 // MARK: Nintendo
 
 /// Famicom Profile
@@ -50,6 +184,8 @@ pub struct ProfileFamicom {
     /// Specify background or foreground mode
     pub mode: BgFg<Const<false>, SpriteNintendo1>,
 }
+
+impl_traits!(ProfileFamicom);
 
 /// Define the serialization options available for the Famicom
 #[repr(u8)]
@@ -83,6 +219,8 @@ pub struct ProfileSuperFamicom {
     pub mode: BgFg<Const, SpriteNintendo2>,
 }
 
+impl_traits!(ProfileSuperFamicom);
+
 /// Define the serialization options available for the Super Famicom
 #[repr(u8)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, EnumString)]
@@ -112,6 +250,8 @@ pub struct ProfileGameBoy {
     pub mode: BgFg<Const<false>, SpriteNintendo1>,
 }
 
+impl_traits!(ProfileGameBoy);
+
 /// Game Boy Color Profile
 #[derive(Debug, Clone, Copy)]
 pub struct ProfileGameBoyColor {
@@ -119,12 +259,16 @@ pub struct ProfileGameBoyColor {
     pub mode: BgFg<Const, SpriteNintendo1>,
 }
 
+impl_traits!(ProfileGameBoyColor);
+
 /// Virtual Boy Profile
 #[derive(Debug, Clone, Copy)]
 pub struct ProfileVirtualBoy {
     /// Specify background or foreground mode
     pub mode: BgFg<Const, SpriteNintendo2>,
 }
+
+impl_traits!(ProfileVirtualBoy);
 
 /// Sprite modes supported by the Famicom / GameBoy
 #[repr(u8)]
@@ -139,6 +283,18 @@ pub enum SpriteNintendo1 {
     #[strum(serialize = "8x16")]
     S8x16,
 }
+
+impl GetTileSize for SpriteNintendo1 {
+    #[rustfmt::skip]
+    fn tile_size(&self) -> TileSize {
+        match self {
+            Self::S8x8  => TileSize::new(8,  8),
+            Self::S8x16 => TileSize::new(8, 16),
+        }
+    }
+}
+
+impl_flip!(SpriteNintendo1 => Both);
 
 /// Sprite modes supported by the Super Famicom / Virtual Boy
 #[repr(u8)]
@@ -162,6 +318,20 @@ pub enum SpriteNintendo2 {
     S64x64,
 }
 
+impl GetTileSize for SpriteNintendo2 {
+    #[rustfmt::skip]
+    fn tile_size(&self) -> TileSize {
+        match self {
+            Self::S8x8   => TileSize::new( 8,  8),
+            Self::S16x16 => TileSize::new(16, 16),
+            Self::S32x32 => TileSize::new(32, 32),
+            Self::S64x64 => TileSize::new(64, 64),
+        }
+    }
+}
+
+impl_flip!(SpriteNintendo2 => Both);
+
 // MARK: NEC
 
 /// PC-Engine Profile
@@ -173,6 +343,8 @@ pub struct ProfilePcEngine {
     /// Specify background or foreground mode
     pub mode: BgFg<Const, SpritePcEngine>,
 }
+
+impl_traits!(ProfilePcEngine);
 
 /// Sprite modes supported by the PC-Engine
 #[repr(u8)]
@@ -212,6 +384,24 @@ pub enum SpritePcEngine {
     S32x64,
 }
 
+impl GetTileSize for SpritePcEngine {
+    #[rustfmt::skip]
+    fn tile_size(&self) -> TileSize {
+        match self {
+            Self::S16x16 => TileSize::new(16, 16),
+            Self::S16x32 => TileSize::new(16, 32),
+            Self::S16x48 => TileSize::new(16, 48),
+            Self::S16x64 => TileSize::new(16, 64),
+            Self::S32x16 => TileSize::new(32, 16),
+            Self::S32x32 => TileSize::new(32, 32),
+            Self::S32x48 => TileSize::new(32, 48),
+            Self::S32x64 => TileSize::new(32, 64),
+        }
+    }
+}
+
+impl_flip!(SpritePcEngine => Both);
+
 // MARK: Bandai
 
 /// WonderSwan Profile
@@ -221,6 +411,8 @@ pub struct ProfileWonderSwan {
     pub mode: BgFg<Const, Const<true, 8>>,
 }
 
+impl_traits!(ProfileWonderSwan);
+
 // MARK: SEGA
 
 /// Master System Profile
@@ -229,6 +421,8 @@ pub struct ProfileMasterSystem {
     /// Specify background or foreground mode
     pub mode: BgFg<Const, SpriteSegaMS>,
 }
+
+impl_traits!(ProfileMasterSystem);
 
 /// Sprite modes supported by the SEGA Master System
 #[repr(u8)]
@@ -244,12 +438,26 @@ pub enum SpriteSegaMS {
     S8x16,
 }
 
+impl GetTileSize for SpriteSegaMS {
+    #[rustfmt::skip]
+    fn tile_size(&self) -> TileSize {
+        match self {
+            Self::S8x8  => TileSize::new(8,  8),
+            Self::S8x16 => TileSize::new(8, 16),
+        }
+    }
+}
+
+impl_flip!(SpriteSegaMS => None);
+
 /// MegaDrive Profile
 #[derive(Debug, Clone, Copy)]
 pub struct ProfileMegaDrive {
     /// Specify background or foreground mode
     pub mode: BgFg<Const, SpriteSegaMD>,
 }
+
+impl_traits!(ProfileMegaDrive);
 
 /// Sprite modes supported by the SEGA MegaDrive
 #[repr(u8)]
@@ -273,6 +481,20 @@ pub enum SpriteSegaMD {
     S32x32,
 }
 
+impl GetTileSize for SpriteSegaMD {
+    #[rustfmt::skip]
+    fn tile_size(&self) -> TileSize {
+        match self {
+            Self::S8x8   => TileSize::new( 8,  8),
+            Self::S16x16 => TileSize::new(16, 16),
+            Self::S24x24 => TileSize::new(24, 24),
+            Self::S32x32 => TileSize::new(32, 32),
+        }
+    }
+}
+
+impl_flip!(SpriteSegaMD => Both);
+
 // MARK: SNK
 
 /// NeoGeo Pocket Profile
@@ -281,6 +503,8 @@ pub struct ProfileNeoGeoPocket {
     /// Specify background or foreground mode
     pub mode: BgFg<Const, SpriteNeoGeoPocket>,
 }
+
+impl_traits!(ProfileNeoGeoPocket);
 
 /// Sprite modes supported by the NeoGeo Pocket
 #[repr(u8)]
@@ -324,12 +548,33 @@ pub enum SpriteNeoGeoPocket {
     S32x32,
 }
 
+impl GetTileSize for SpriteNeoGeoPocket {
+    #[rustfmt::skip]
+    fn tile_size(&self) -> TileSize {
+        match self {
+            Self::S8x8   => TileSize::new( 8,  8),
+            Self::S8x16  => TileSize::new( 8, 16),
+            Self::S8x32  => TileSize::new( 8, 16),
+            Self::S16x8  => TileSize::new(16,  8),
+            Self::S16x16 => TileSize::new(16, 16),
+            Self::S16x32 => TileSize::new(16, 32),
+            Self::S32x8  => TileSize::new(32,  8),
+            Self::S32x16 => TileSize::new(32, 16),
+            Self::S32x32 => TileSize::new(32, 32),
+        }
+    }
+}
+
+impl_flip!(SpriteNeoGeoPocket => Both);
+
 /// NeoGeo Profile
 #[derive(Debug, Clone, Copy)]
 pub struct ProfileNeoGeo {
     /// NeoGeo only supports sprites
     pub mode: Const<true, 16>,
 }
+
+impl_traits!(ProfileNeoGeo);
 
 /// Specify if we are processing background or foreground tiles
 #[derive(Debug, Clone, Copy)]
@@ -341,7 +586,83 @@ pub enum BgFg<Bg, Fg> {
     Fg(Fg),
 }
 
+impl<Bg: Default, Fg> BgFg<Bg, Fg> {
+    #[inline]
+    fn default_bg() -> Self {
+        Self::Bg(Default::default())
+    }
+}
+
+impl<Bg, Fg: Default> BgFg<Bg, Fg> {
+    #[inline]
+    fn default_fg() -> Self {
+        Self::Fg(Default::default())
+    }
+}
+
+impl<Bg: GetTileSize, Fg: GetTileSize> GetTileSize for BgFg<Bg, Fg> {
+    #[inline]
+    fn tile_size(&self) -> TileSize {
+        match self {
+            BgFg::Bg(bg) => bg.tile_size(),
+            BgFg::Fg(fg) => fg.tile_size(),
+        }
+    }
+}
+
+impl<Bg: GetTileFlip, Fg: GetTileFlip> GetTileFlip for BgFg<Bg, Fg> {
+    #[inline]
+    fn tile_flip(&self) -> Flip {
+        match self {
+            BgFg::Bg(bg) => bg.tile_flip(),
+            BgFg::Fg(fg) => fg.tile_flip(),
+        }
+    }
+}
+
 /// Non-configurable tile size and mode.
 /// Used for hardware which only supports one type of tile.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Const<const FLIP: bool = true, const SIZE: u32 = 8>;
+
+impl<const FLIP: bool, const SIZE: u32> GetTileSize for Const<FLIP, SIZE> {
+    #[inline]
+    fn tile_size(&self) -> TileSize {
+        TileSize::new(SIZE, SIZE)
+    }
+}
+
+impl<const FLIP: bool, const SIZE: u32> GetTileFlip for Const<FLIP, SIZE> {
+    #[inline]
+    fn tile_flip(&self) -> Flip {
+        if FLIP { Flip::Both } else { Flip::None }
+    }
+}
+
+// MARK: Parse
+
+/// Parse a sprite size format
+#[inline]
+fn parse_sprite_size<Bg, Fg>(sprite_size: Option<&str>) -> Result<BgFg<Bg, Fg>, Fg::Err>
+where
+    Fg: Default + FromStr,
+{
+    if let Some(sprite_size) = sprite_size {
+        Ok(BgFg::Fg(Fg::from_str(sprite_size)?))
+    } else {
+        Ok(BgFg::default_fg())
+    }
+}
+
+/// Parse a bit plane format
+#[inline]
+fn parse_bitplane<S>(bitplane: Option<&str>) -> Result<S, S::Err>
+where
+    S: Default + FromStr,
+{
+    if let Some(bpp) = bitplane {
+        S::from_str(bpp)
+    } else {
+        Ok(S::default())
+    }
+}

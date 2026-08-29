@@ -3,7 +3,7 @@
 [config]
 
 # Target hardware
-hardware = "gameboy"
+system = "gameboy"
 
 # Background or Foreground tileset
 kind = "bg"

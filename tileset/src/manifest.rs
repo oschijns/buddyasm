@@ -212,7 +212,7 @@ pub struct ManifestEntry {
 
     /// Optional fixed mapping
     #[serde(default)]
-    pub range: Vec<CharacterRange>,
+    pub fixed_mapping: Vec<CharacterRange>,
 
     /// Specify if the entry should generate a JSON file.
     /// This is used to visualize the mapping of tiles to indices.
@@ -230,7 +230,7 @@ impl ManifestEntry {
     /// This is mostly used to encode character sets
     #[inline]
     pub fn has_fixed_mapping(&self) -> bool {
-        !self.range.is_empty()
+        !self.fixed_mapping.is_empty()
     }
 }
 

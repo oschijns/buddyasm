@@ -1,5 +1,5 @@
 use crate::{
-    data::{coords::TileSize, mapping::CharacterMapping, palette::PaletteSetRgba},
+    data::{coords::TileSize, flip::Flip, mapping::CharacterMapping, palette::PaletteSetRgba},
     profile::Profile,
 };
 use asefile::{AsepriteFile, AsepriteParseError};
@@ -26,25 +26,11 @@ pub struct InputConfig {
     /// Size of the tileset to produce
     pub tile_count: usize,
 
-    /// With of a tile in pixels
-    pub tile_width: u32,
+    /// With and height of a tile in pixels
+    pub tile_size: TileSize,
 
-    /// Height of a tile in pixels
-    pub tile_height: u32,
-
-    /// Specify wherever tiles can be flipped horizontally
-    pub flip_horizontal: bool,
-
-    /// Specify wherever tiles can be flipped vertically
-    pub flip_vertical: bool,
-}
-
-impl InputConfig {
-    /// Get the size of the tile
-    #[inline]
-    pub fn tile_size(&self) -> TileSize {
-        TileSize::new(self.tile_width, self.tile_height)
-    }
+    /// Specify wherever tiles can be flipped horizontally and/or vertically
+    pub flip: Flip,
 }
 
 /// Define an entry to process

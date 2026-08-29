@@ -38,7 +38,6 @@ pub fn process_stack(input: &InputStack) -> Result<OutputStack, OutputStackError
                 Ok(tile_map) => {
                     // Encode the tiles for the target system
                     let out_map = encode_tiles(&input.profile, &tile_map);
-
                     out_entries.push(OutputEntry {
                         name: entry.name.clone(),
                         image: OutputImage::Static(out_map),
@@ -106,7 +105,7 @@ impl Builder {
         vacancy.resize(capacity, true);
         Self {
             config,
-            empty_tile: Tile::new_empty(config.tile_width, config.tile_height),
+            empty_tile: Tile::new_empty(config.tile_size),
             index_to_tile: HashMap::with_capacity(capacity),
             tile_to_index: HashMap::with_capacity(capacity),
             vacancy,
@@ -117,25 +116,23 @@ impl Builder {
     /// This method assume the tile is in its default orientation
     #[inline]
     fn set_tile(&mut self, index: usize, tile: Tile) {
-        let flip_h = self.config.flip_horizontal;
-        let flip_v = self.config.flip_vertical;
-
         // Associate the index with the provided tile
         self.index_to_tile.insert(index, tile.clone());
 
         // Make it a bidirectional relationship
         self.tile_to_index.insert(tile.clone(), (index, Flip::None));
-        if flip_h {
-            self.tile_to_index
-                .insert(tile.flip_horizontal(), (index, Flip::Horizontal));
-        }
-        if flip_v {
-            self.tile_to_index
-                .insert(tile.flip_vertical(), (index, Flip::Vertical));
-        }
-        if flip_h && flip_v {
-            self.tile_to_index
-                .insert(tile.flip_both(), (index, Flip::Both));
+
+        #[cfg_attr(cfg, rustfmt::skip)]
+        match self.config.flip {
+            Flip::None       => { /* nothing to do */ }
+            Flip::Horizontal => { self.tile_to_index.insert(tile.flip_horizontal(), (index, Flip::Horizontal)); }
+            Flip::Vertical   => { self.tile_to_index.insert(tile.flip_vertical  (), (index, Flip::Vertical  )); }
+            Flip::Both       => {
+                // Flip the tile along both axes
+                self.tile_to_index.insert(tile.flip_horizontal(), (index, Flip::Horizontal));
+                self.tile_to_index.insert(tile.flip_vertical  (), (index, Flip::Vertical  ));
+                self.tile_to_index.insert(tile.flip_both      (), (index, Flip::Both      ));
+            }
         }
 
         // The slot is no longer vacant
@@ -182,7 +179,7 @@ impl Builder {
         Q: 'static + Deref<Target = [P::Subpixel]>,
     {
         // Get the dimensions of the input images in tiles.
-        let tile_size = self.config.tile_size();
+        let tile_size = self.config.tile_size;
         let dims = Dimensions::from_img(img.dimensions(), tile_size);
 
         // Create a container to store index data
@@ -259,7 +256,7 @@ impl Builder {
         Q: 'static + Deref<Target = [P::Subpixel]>,
     {
         // Get the dimensions of the input images in tiles.
-        let tile_size = self.config.tile_size();
+        let tile_size = self.config.tile_size;
         let dims = Dimensions::from_img(img.dimensions(), tile_size);
 
         // Push errors into this list

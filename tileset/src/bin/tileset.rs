@@ -3,7 +3,13 @@
 use buddyasm_common::{
     anyhow,
     clap::{self, Parser},
-    manifest::{Manifest, load_manifest},
+    manifest::{Manifest as _, load_manifest},
+};
+use buddyasm_tileset::{
+    manifest::Manifest,
+    process::{builder::process_stack, prepare::prepare, serialize::SerializeTileSet as _},
+    profile::Profile,
+    template::{self, render},
 };
 use image::EncodableLayout;
 use std::{
@@ -13,9 +19,9 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
+use tera::Tera;
 
 fn main() -> Result<(), anyhow::Error> {
-    /*
     // Read command-line arguments
     let args = Cli::parse();
 
@@ -28,20 +34,14 @@ fn main() -> Result<(), anyhow::Error> {
     } else {
         current_directory.join("manifest.toml")
     };
-    let manifest = load_manifest::<TileSetManifest, _>(&man_path)?;
+    let manifest = load_manifest::<Manifest, _>(&man_path)?;
 
     // Create a profile for the target hardware
     let profile = Profile::new(
-        manifest.config.hardware,
-        manifest.config.kind,
-        manifest.config.sprite_size.as_deref(),
-    )?;
-
-    // Create the serializer for the processed tilesets
-    let serial = Serial::new(
-        manifest.config.hardware,
+        manifest.config.system,
         manifest.config.kind,
         manifest.config.bit_plane.as_deref(),
+        manifest.config.sprite_size.as_deref(),
     )?;
 
     // Where to write the output?
@@ -54,56 +54,23 @@ fn main() -> Result<(), anyhow::Error> {
     };
 
     // We need a renderer for generating the sources
-    let tera = build_renderer(
+    let mut tera = Tera::new();
+    template::setup(
+        &mut tera,
         &manifest.get_path(),
-        &manifest.templating,
-        &manifest.entries,
+        manifest.templating.as_ref(),
+        true,
     )?;
 
     // Create the input stack to process and generate the output stack
-    let input = InputStack::new(&profile, &manifest)?;
-    let mut output = process_stack(&input)?;
+    let input = prepare(profile, &manifest)?;
+    let output = process_stack(&input)?;
 
     // serialize the result
-    let bits = serial.serialize(&output.tileset);
+    let bits = profile.serialize(&output.tileset);
     let out_path = Path::new(&out_path).to_path_buf().canonicalize()?;
     let mut file = File::create(out_path.join("tileset.chr"))?;
     file.write_all(bits.as_bytes())?;
-
-    // Generate encoded tile data
-    for entry in output.entries.iter_mut() {
-        match &mut entry.image {
-            OutputImage::Static(index_map) => {
-                encode_tiles(&profile, index_map);
-            }
-            OutputImage::Animated(hash_map) => {
-                for anim in hash_map.values_mut() {
-                    match anim {
-                        OutputAnimation::Normal(map) => encode_tiles(&profile, map),
-                        OutputAnimation::LeftRight { left, right } => {
-                            encode_tiles(&profile, left);
-                            encode_tiles(&profile, right);
-                        }
-                        OutputAnimation::UpDown { up, down } => {
-                            encode_tiles(&profile, up);
-                            encode_tiles(&profile, down);
-                        }
-                        OutputAnimation::FourWays {
-                            up_left,
-                            up_right,
-                            down_left,
-                            down_right,
-                        } => {
-                            encode_tiles(&profile, up_left);
-                            encode_tiles(&profile, up_right);
-                            encode_tiles(&profile, down_left);
-                            encode_tiles(&profile, down_right);
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     // serialize the output stack
     for entry in &output.entries {
@@ -125,7 +92,6 @@ fn main() -> Result<(), anyhow::Error> {
             render(&tera, &template.to_string_lossy(), &entry.image, &mut file)?;
         }
     }
-    */
 
     Ok(())
 }
