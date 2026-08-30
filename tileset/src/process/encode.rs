@@ -26,7 +26,15 @@ pub fn encode_tiles(encoder: &dyn EncodeTileData, map: &TileMap) -> OutMap {
 /// Trait for encoding a tile for a given platform.
 /// Depending on the platform, the words should be read as 8-bits or 16-bits values.
 pub trait EncodeTileData {
+    /// Encode the tile data for the target hardware
     fn encode_tile_data(&self, tile: TileData) -> EncodedTile;
+
+    /// Word size of the target hardware (8-bits or 16-bits)
+    #[inline]
+    fn long_word(&self) -> bool {
+        // defaults to 8-bits words
+        false
+    }
 }
 
 impl EncodeTileData for Profile {
@@ -188,6 +196,11 @@ impl EncodeTileData for ProfilePcEngine {
         let attr = palette | flip;
         EncodedTile { index, attr }
     }
+
+    #[inline]
+    fn long_word(&self) -> bool {
+        true
+    }
 }
 
 /// Encode tile data for the WonderSwan platform
@@ -301,6 +314,11 @@ impl EncodeTileData for ProfileNeoGeo {
         let flip = tile.flip as u16;
         let attr = palette | high | flip;
         EncodedTile { index, attr }
+    }
+
+    #[inline]
+    fn long_word(&self) -> bool {
+        true
     }
 }
 

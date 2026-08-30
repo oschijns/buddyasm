@@ -2,7 +2,7 @@
 [config]
 
 # Target hardware
-hardware = "pc-engine"
+system = "pc-engine"
 
 # Background or Foreground tileset
 kind = "fg"
@@ -14,18 +14,25 @@ default_palette = "palette.png"
 output = "../../output/pce"
 
 
+# Templating configuration
+[templating]
+
+# Optional template includes
+# Can be either paths or glob patterns
+includes = []
+
+# Override delimiters
+delimiter_block = "{%%}"
+delimiter_variable = "{{}}"
+delimiter_comment = "{##}"
+
+
+# List of entries to process
+
 [[entry]]
 
 # Load a font file
 image = "font_vincent.png"
 
 # Pick all printable ASCII characters and place them at the expected location for ASCII characters
-mapping = [ { start = 0x0, end = 0x20, target = 0x0 } ]
-
-[[entry]]
-
-# Load a sprite work
-image = "title.png"
-
-# Use a custom palette
-palette = "palette-title.png"
+fixed_mapping = [ { start = 0x0, end = 0x20, target = 0x0 } ]

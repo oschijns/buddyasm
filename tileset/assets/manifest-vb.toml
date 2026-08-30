@@ -2,7 +2,7 @@
 [config]
 
 # Target hardware
-hardware = "virtual-boy"
+system = "virtual-boy"
 
 # Background or Foreground tileset
 kind = "bg"
@@ -17,18 +17,43 @@ default_palette = "palette.png"
 output = "../../output/vb"
 
 
+# Templating configuration
+[templating]
+
+# Optional template includes
+# Can be either paths or glob patterns
+includes = []
+
+# Override delimiters
+delimiter_block = "{%%}"
+delimiter_variable = "{{}}"
+delimiter_comment = "{##}"
+
+
+# List of entries to process
+
 [[entry]]
 
 # Load a font file
 image = "font_vincent.png"
 
 # Pick all printable ASCII characters and place them at the expected location for ASCII characters
-mapping = [ { start = 0x20, end = 0x7F, target = 0x20 } ]
+fixed_mapping = [ { start = 0x20, end = 0x7F, target = 0x20 } ]
 
 [[entry]]
+
+# Optional name for the entry
+name = "title-screen"
 
 # Load a sprite work
 image = "title.png"
 
 # Use a custom palette
 palette = "palette-title.png"
+
+# Should we output the index data in JSON format
+# Only applicable for static and animated spritework entries
+output_json = true
+
+# Which template file to use for rendering
+template = "template.h"

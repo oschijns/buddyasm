@@ -7,7 +7,10 @@ use buddyasm_common::{
 };
 use buddyasm_tileset::{
     manifest::Manifest,
-    process::{builder::process_stack, prepare::prepare, serialize::SerializeTileSet as _},
+    process::{
+        builder::process_stack, encode::EncodeTileData, prepare::prepare,
+        serialize::SerializeTileSet as _,
+    },
     profile::Profile,
     template::{self, render},
 };
@@ -59,11 +62,12 @@ fn main() -> Result<(), anyhow::Error> {
         &mut tera,
         &manifest.get_path(),
         manifest.templating.as_ref(),
-        true,
+        profile.long_word(),
     )?;
 
     // Create the input stack to process and generate the output stack
     let input = prepare(profile, &manifest)?;
+    template::load_templates(&mut tera, &manifest.get_path(), &input.stack)?;
     let output = process_stack(&input)?;
 
     // serialize the result
