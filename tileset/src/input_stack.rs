@@ -2,10 +2,14 @@ use crate::{
     data::{coords::TileSize, flip::Flip, mapping::CharacterMapping, palette::PaletteSetRgba},
     profile::Profile,
 };
-use asefile::{AsepriteFile, AsepriteParseError};
+use aseprite_loader::loader::{AsepriteFile, LoadSpriteError};
 use core::{error, fmt};
 use image::{ImageError, RgbaImage};
-use std::path::PathBuf;
+use ouroboros::self_referencing;
+use std::{
+    fs, io,
+    path::{Path, PathBuf},
+};
 
 /// Define a stack of data to process
 #[derive(Debug)]
@@ -73,13 +77,43 @@ pub enum InputImage {
     },
 
     /// Animated sprite from Aseprite
-    Aseprite(Box<AsepriteFile>),
+    Aseprite(Aseprite),
 
     /// Tile set from Tiled
     TiledTileset(Box<tiled::Tileset>),
 
     /// Tile map made in Tiled
     TiledMap(Box<tiled::Map>),
+}
+
+/// Wrapper for owned Aseprite file
+#[self_referencing]
+pub struct Aseprite {
+    /// Binary data loaded from the file
+    raw: Vec<u8>,
+
+    /// Parsed data
+    #[borrows(raw)]
+    #[covariant]
+    file: Box<AsepriteFile<'this>>,
+}
+
+impl Aseprite {
+    /// Load Aseprite file from disk
+    pub fn load(path: &Path) -> Result<Self, InError> {
+        let raw = fs::read(path)?;
+        Self::try_new(raw, |raw| match AsepriteFile::load(&raw) {
+            Ok(file) => Ok(Box::new(file)),
+            Err(err) => Err(InError::Aseprite(err)),
+        })
+    }
+}
+
+/// Manual implementation of Debug trait because of ouroboros macro
+impl fmt::Debug for Aseprite {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Aseprite").finish()
+    }
 }
 
 // MARK: Error
@@ -108,34 +142,34 @@ impl error::Error for InputStackError {}
 #[derive(thiserror::Error, Debug)]
 pub enum InError {
     /// Missing file extension
-    #[error("Failed to identify file type \"{0}\"")]
-    FileExt(PathBuf),
+    #[error("Failed to identify file type")]
+    FileExt,
 
     /// Invalid entry name
-    #[error("Missing name for entry with path \"{0}\"")]
-    InvalidName(PathBuf),
+    #[error("Missing name for entry")]
+    InvalidName,
 
     /// No palette specified
     #[error("No palette specified")]
     NoPalette,
 
+    /// Failed to load file
+    #[error("IO error: {0}")]
+    Io(#[from] io::Error),
+
     /// Failed loading a palette
-    #[error("Failed to load palette at path \"{0}\": {1}")]
-    Palette(PathBuf, ImageError),
+    #[error("Failed to load palette at path: {0}")]
+    Palette(ImageError),
 
     /// Failed loading an image file
-    #[error("Failed loading image at path \"{0}\": {1}")]
-    Image(PathBuf, ImageError),
+    #[error("Failed loading image at path: {0}")]
+    Image(#[from] ImageError),
 
     /// Failed loading an aseprite file
-    #[error("Failed loading Aseprite file \"{0}\": {1}")]
-    Aseprite(PathBuf, AsepriteParseError),
+    #[error("Failed loading Aseprite file: {0}")]
+    Aseprite(#[from] LoadSpriteError),
 
-    /// Failed loading an TSX file
-    #[error("Failed loading Tiled TSX file \"{0}\": {1}")]
-    TiledTSX(PathBuf, tiled::Error),
-
-    /// Failed loading an TMX file
-    #[error("Failed loading Tiled TMX file \"{0}\": {1}")]
-    TiledTMX(PathBuf, tiled::Error),
+    /// Failed loading an TSX or TMX file
+    #[error("Failed loading Tiled file: {0}")]
+    Tiled(#[from] tiled::Error),
 }

@@ -46,48 +46,50 @@ pub enum OutputImage {
     Static(OutMap),
 
     /// Output an animated image
-    Animated(HashMap<String, OutputAnimation>),
+    Animated(Vec<OutMap>),
 }
 
+/* TODO rework
 /// Store the data to reconstruct an animated sprite
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OutputAnimation {
     /// Produce a single animation
-    Normal(OutMap),
+    Normal(Vec<OutMap>),
 
     /// Produce left and right variants of the animation
     LeftRight {
         /// Left variant of the animation
-        left: OutMap,
+        left: Vec<OutMap>,
 
         /// RIght variant of the animation
-        right: OutMap,
+        right: Vec<OutMap>,
     },
 
     /// Produce up and down variants of the animation
     UpDown {
         /// Up variant of the animation
-        up: OutMap,
+        up: Vec<OutMap>,
 
         /// Down variant of the animation
-        down: OutMap,
+        down: Vec<OutMap>,
     },
 
     /// Produce variants for all four directions
     FourWays {
         /// Up-Left variant of the animation
-        up_left: OutMap,
+        up_left: Vec<OutMap>,
 
         /// Up-Right variant of the animation
-        up_right: OutMap,
+        up_right: Vec<OutMap>,
 
         /// Down-Left variant of the animation
-        down_left: OutMap,
+        down_left: Vec<OutMap>,
 
         /// Down-Right variant of the animation
-        down_right: OutMap,
+        down_right: Vec<OutMap>,
     },
 }
+*/
 
 /// Indexes map to reconstruct the pictural data
 #[derive(Debug, Clone)]

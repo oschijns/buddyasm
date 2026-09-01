@@ -46,10 +46,11 @@ bytemuck = "1.25"
 image = { version = "0.25", features = ["bmp", "png"] }
 
 # Load Aseprite file
-asefile = "0.3"
+aseprite-loader = "0.4"
+ouroboros = "0.18"
 
 # Load Tiled file
-tiled = "0.15"
+tiled = "0.16"
 
 # Generate source files from data processed
 tera = { version = "2", features = ["fast"] }

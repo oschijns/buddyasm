@@ -2,9 +2,7 @@
 
 use crate::data::tileset::{Pix, Tile};
 use core::ops::Deref;
-use image::{
-    EncodableLayout, ImageBuffer, ImageReader, ImageResult, Luma, LumaA, Pixel, Rgb, Rgba,
-};
+use image::{EncodableLayout, ImageBuffer, ImageResult, Luma, LumaA, Pixel, Rgb, Rgba};
 use ndarray::{Array2, Ix, Ix2};
 use std::path::Path;
 use std::rc::Rc;
@@ -102,7 +100,7 @@ macro_rules! impl_load_palette {
                 const BLACK: $color = $black();
 
                 // load the image into a RGBA image
-                let img = ImageReader::open(path)?.decode()?.$into();
+                let img = image::io::Reader::open(path)?.decode()?.$into();
 
                 // Convert it into a 2D matrix
                 let width = img.width() as usize;

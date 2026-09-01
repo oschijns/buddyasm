@@ -51,14 +51,44 @@ pub fn process_stack(input: &InputStack) -> Result<OutputStack, OutputStackError
             },
             // Input is a character set (or similar)
             InputImage::FixedPosition { image, mapping } => {
-                match builder.process_fixed(image, &entry.palette, mapping) {
-                    Ok(()) => {}
-                    Err(err) => {
-                        errors.insert(entry.path.clone(), err);
-                    }
+                if let Err(err) = builder.process_fixed(image, &entry.palette, mapping) {
+                    errors.insert(entry.path.clone(), err);
                 }
             }
-            InputImage::Aseprite(aseprite) => todo!("Aseprite files not yet supported"),
+            InputImage::Aseprite(aseprite) => {
+                /*
+                // Collect animations
+                let mut animations = Vec::with_capacity(aseprite.num_frames() as usize);
+
+                // TODO
+                // read animations metadata to associate actual animations with
+                // frames that have been processed.
+
+                // Iterate over all the frames defined in the Aseprite file
+                for i in 0..aseprite.num_frames() {
+                    let image = aseprite.frame(i).image();
+                    match builder.process(&image, &entry.palette) {
+                        Ok(tile_map) => {
+                            // Encode the tiles for the target system
+                            let out_map = encode_tiles(&input.profile, &tile_map);
+                            animations.push(out_map);
+                        }
+                        Err(err) => {
+                            errors.insert(entry.path.clone(), err);
+                            continue;
+                        }
+                    }
+                }
+
+                // Encode the tiles for the target system
+                out_entries.push(OutputEntry {
+                    name: entry.name.clone(),
+                    image: OutputImage::Animated(animations),
+                    output_json: entry.output_json,
+                    template: entry.template.clone(),
+                });
+                */
+            }
             InputImage::TiledTileset(tileset) => todo!("Tiled files not yet supported"),
             InputImage::TiledMap(map) => todo!("Tiled files not yet supported"),
         }
