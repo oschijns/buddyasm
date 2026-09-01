@@ -9,9 +9,10 @@ use crate::{
         tilemap::{TileData, TileMap},
         tileset::{Tile, TileSet},
     },
-    input_stack::{InputConfig, InputImage, InputStack},
+    input_stack::{InputConfig, InputEntry, InputImage, InputStack},
     output_stack::{OutError, OutputEntry, OutputImage, OutputStack, OutputStackError},
     process::encode::encode_tiles,
+    profile::Profile,
 };
 use core::ops::Deref;
 use image::{EncodableLayout, GenericImageView, ImageBuffer, Pixel};
@@ -32,65 +33,14 @@ pub fn process_stack(input: &InputStack) -> Result<OutputStack, OutputStackError
 
     // Process each element in the input stack
     for entry in input.stack.iter() {
-        match &entry.image {
-            // Input is a common static image
-            InputImage::Static(image) => match builder.process(image, &entry.palette) {
-                Ok(tile_map) => {
-                    // Encode the tiles for the target system
-                    let out_map = encode_tiles(&input.profile, &tile_map);
-                    out_entries.push(OutputEntry {
-                        name: entry.name.clone(),
-                        image: OutputImage::Static(out_map),
-                        output_json: entry.output_json,
-                        template: entry.template.clone(),
-                    });
-                }
-                Err(err) => {
-                    errors.insert(entry.path.clone(), err);
-                }
-            },
-            // Input is a character set (or similar)
-            InputImage::FixedPosition { image, mapping } => {
-                if let Err(err) = builder.process_fixed(image, &entry.palette, mapping) {
-                    errors.insert(entry.path.clone(), err);
-                }
+        match builder.process_entry(&input.profile, entry) {
+            Ok(Some(out_entry)) => {
+                out_entries.push(out_entry);
             }
-            InputImage::Aseprite(aseprite) => {
-                /*
-                // Collect animations
-                let mut animations = Vec::with_capacity(aseprite.num_frames() as usize);
-
-                // TODO
-                // read animations metadata to associate actual animations with
-                // frames that have been processed.
-
-                // Iterate over all the frames defined in the Aseprite file
-                for i in 0..aseprite.num_frames() {
-                    let image = aseprite.frame(i).image();
-                    match builder.process(&image, &entry.palette) {
-                        Ok(tile_map) => {
-                            // Encode the tiles for the target system
-                            let out_map = encode_tiles(&input.profile, &tile_map);
-                            animations.push(out_map);
-                        }
-                        Err(err) => {
-                            errors.insert(entry.path.clone(), err);
-                            continue;
-                        }
-                    }
-                }
-
-                // Encode the tiles for the target system
-                out_entries.push(OutputEntry {
-                    name: entry.name.clone(),
-                    image: OutputImage::Animated(animations),
-                    output_json: entry.output_json,
-                    template: entry.template.clone(),
-                });
-                */
+            Ok(None) => { /* do nothing */ }
+            Err(err) => {
+                errors.insert(entry.path.clone(), err);
             }
-            InputImage::TiledTileset(tileset) => todo!("Tiled files not yet supported"),
-            InputImage::TiledMap(map) => todo!("Tiled files not yet supported"),
         }
     }
 
@@ -170,6 +120,7 @@ impl Builder {
     }
 
     /// Get the list of vacant slots in the tileset
+    #[allow(unused)]
     fn get_vacant_slots(&self) -> Vec<usize> {
         let count = self.config.tile_count;
 
@@ -195,6 +146,70 @@ impl Builder {
         }
 
         TileSet::new(tileset)
+    }
+
+    /// Process one entry of the input stack and generate an output entry
+    fn process_entry(
+        &mut self,
+        profile: &Profile,
+        entry: &InputEntry,
+    ) -> Result<Option<OutputEntry>, Vec<OutError>> {
+        match &entry.image {
+            // Input is a common static image
+            InputImage::Static(image) => {
+                let tile_map = self.process(image, &entry.palette)?;
+                // Encode the tiles for the target system
+                let out_map = encode_tiles(profile, &tile_map);
+                Ok(Some(OutputEntry {
+                    name: entry.name.clone(),
+                    image: OutputImage::Static(out_map),
+                    output_json: entry.output_json,
+                    template: entry.template.clone(),
+                }))
+            }
+            // Input is a character set (or similar)
+            InputImage::FixedPosition { image, mapping } => {
+                let _ = self.process_fixed(image, &entry.palette, mapping)?;
+                Ok(None)
+            }
+            InputImage::Aseprite(aseprite) => {
+                /*
+                // Collect animations
+                let mut animations = Vec::with_capacity(aseprite.num_frames() as usize);
+
+                // TODO
+                // read animations metadata to associate actual animations with
+                // frames that have been processed.
+
+                // Iterate over all the frames defined in the Aseprite file
+                for i in 0..aseprite.num_frames() {
+                    let image = aseprite.frame(i).image();
+                    match builder.process(&image, &entry.palette) {
+                        Ok(tile_map) => {
+                            // Encode the tiles for the target system
+                            let out_map = encode_tiles(&input.profile, &tile_map);
+                            animations.push(out_map);
+                        }
+                        Err(err) => {
+                            errors.insert(entry.path.clone(), err);
+                            continue;
+                        }
+                    }
+                }
+
+                // Encode the tiles for the target system
+                out_entries.push(OutputEntry {
+                    name: entry.name.clone(),
+                    image: OutputImage::Animated(animations),
+                    output_json: entry.output_json,
+                    template: entry.template.clone(),
+                });
+                */
+                todo!("Aseprite not yet supported")
+            }
+            InputImage::TiledTileset(tileset) => todo!("Tiled files not yet supported"),
+            InputImage::TiledMap(map) => todo!("Tiled files not yet supported"),
+        }
     }
 
     /// Process the given images with the associated palette
