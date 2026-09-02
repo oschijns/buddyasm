@@ -2,7 +2,7 @@
 [config]
 
 # Target hardware
-system = "master-system"
+system = "neogeo-pocket"
 
 # Background or Foreground tileset
 kind = "bg"
@@ -11,7 +11,7 @@ kind = "bg"
 default_palette = "palette.png"
 
 # Where to output the processed tileset
-output = "../../output/sms"
+output = "../../../output/ngp"
 
 
 # Templating configuration

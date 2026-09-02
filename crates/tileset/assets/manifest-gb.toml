@@ -1,8 +1,9 @@
 
+# Main configuration section
 [config]
 
 # Target hardware
-system = "neogeo-pocket"
+system = "gameboy"
 
 # Background or Foreground tileset
 kind = "bg"
@@ -11,7 +12,7 @@ kind = "bg"
 default_palette = "palette.png"
 
 # Where to output the processed tileset
-output = "../../output/ngp"
+output = "../../../output/gb"
 
 
 # Templating configuration

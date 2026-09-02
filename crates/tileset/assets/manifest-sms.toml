@@ -2,16 +2,16 @@
 [config]
 
 # Target hardware
-system = "pc-engine"
+system = "master-system"
 
 # Background or Foreground tileset
-kind = "fg"
+kind = "bg"
 
 # Default palette to use for processing the spritework
 default_palette = "palette.png"
 
 # Where to output the processed tileset
-output = "../../output/pce"
+output = "../../../output/sms"
 
 
 # Templating configuration
@@ -35,4 +35,22 @@ delimiter_comment = "{##}"
 image = "font_vincent.png"
 
 # Pick all printable ASCII characters and place them at the expected location for ASCII characters
-fixed_mapping = [ { start = 0x0, end = 0x20, target = 0x0 } ]
+fixed_mapping = [ { start = 0x20, end = 0x7F, target = 0x20 } ]
+
+[[entry]]
+
+# Optional name for the entry
+name = "title-screen"
+
+# Load a sprite work
+image = "title.png"
+
+# Use a custom palette
+palette = "palette-title.png"
+
+# Should we output the index data in JSON format
+# Only applicable for static and animated spritework entries
+output_json = true
+
+# Which template file to use for rendering
+template = "template.h"

@@ -1,10 +1,9 @@
 [workspace]
 members = [
-    "common",
-    "text",
-    "srcgen",
-    "tileset",
-    "translator",
+    "crates/common",
+    "crates/text",
+    "crates/tileset",
+    "crates/translator",
 ]
 resolver = "2"
 
