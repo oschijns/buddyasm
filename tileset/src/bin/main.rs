@@ -2,7 +2,6 @@
 
 use buddyasm_common::{
     anyhow,
-    clap::{self, Parser},
     manifest::{Manifest as _, load_manifest},
 };
 use buddyasm_tileset::{
@@ -14,6 +13,7 @@ use buddyasm_tileset::{
     profile::Profile,
     template::{self, render},
 };
+use clap::{self, Parser};
 use image::EncodableLayout;
 use std::{
     env,

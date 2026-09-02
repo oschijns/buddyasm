@@ -1,9 +1,9 @@
-use std::str::FromStr;
-
 use crate::{
     data::{coords::TileSize, flip::Flip},
-    manifest::{System, TileKind},
+    manifest::TileKind,
 };
+use buddyasm_common::system::System;
+use std::str::FromStr;
 use strum::EnumString;
 
 // MARK: Traits
@@ -80,6 +80,7 @@ impl Profile {
                 System::GameBoy      => Ok(Self::GameBoy     (ProfileGameBoy     { mode: BgFg::default_bg() })),
                 System::GameBoyColor => Ok(Self::GameBoyColor(ProfileGameBoyColor{ mode: BgFg::default_bg() })),
                 System::VirtualBoy   => Ok(Self::VirtualBoy  (ProfileVirtualBoy  { mode: BgFg::default_bg() })),
+                System::GameBoyAdvance => unimplemented!("GameBoy Advance is not yet supported"),
                 System::PcEngine     => Ok(Self::PcEngine    (ProfilePcEngine    { mode: BgFg::default_bg() })),
                 System::WonderSwan   => Ok(Self::WonderSwan  (ProfileWonderSwan  { mode: BgFg::default_bg() })),
                 System::MasterSystem => Ok(Self::MasterSystem(ProfileMasterSystem{ mode: BgFg::default_bg() })),
@@ -93,6 +94,7 @@ impl Profile {
                 System::GameBoy      => Ok(Self::GameBoy     (ProfileGameBoy     { mode: parse_sprite_size(sprite_size)? })),
                 System::GameBoyColor => Ok(Self::GameBoyColor(ProfileGameBoyColor{ mode: parse_sprite_size(sprite_size)? })),
                 System::VirtualBoy   => Ok(Self::VirtualBoy  (ProfileVirtualBoy  { mode: parse_sprite_size(sprite_size)? })),
+                System::GameBoyAdvance => unimplemented!("GameBoy Advance is not yet supported"),
                 System::PcEngine     => Ok(Self::PcEngine    (ProfilePcEngine    { mode: parse_sprite_size(sprite_size)? })),
                 System::WonderSwan   => Ok(Self::WonderSwan  (ProfileWonderSwan  { mode: BgFg::default_fg() })),
                 System::MasterSystem => Ok(Self::MasterSystem(ProfileMasterSystem{ mode: parse_sprite_size(sprite_size)? })),

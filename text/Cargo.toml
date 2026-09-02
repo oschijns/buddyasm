@@ -9,7 +9,34 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+
+[features]
+default = ["binary"]
+
+# dependencies enabled when building the binary
+binary = ["dep:clap"]
+
+[[bin]]
+name = "main"
+required-features = ["binary"]
+
+
 [dependencies]
 
+buddyasm_common = { path = "../common" }
+
+# Report errors when loading images
+thiserror.workspace = true
+
+# Serialize & deserialize data
+serde.workspace = true
+
 # Allow reformatting text so that it fits the target text box
-textwrap = { version = "0.16.2" }
+textwrap = "0.16"
+
+# Generate source files from data processed
+tera = { version = "2", features = ["fast"] }
+
+
+# Command-line arguments
+clap = { version = "4.6", features = ["derive"], optional = true }
