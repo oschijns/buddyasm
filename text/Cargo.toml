@@ -33,6 +33,7 @@ serde.workspace = true
 
 # Allow reformatting text so that it fits the target text box
 textwrap = "0.16"
+ndarray = { version = "0.17", features = ["rayon"] }
 
 # Generate source files from data processed
 tera = { version = "2", features = ["fast"] }

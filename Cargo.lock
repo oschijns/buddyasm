@@ -288,6 +288,7 @@ version = "0.0.1"
 dependencies = [
  "buddyasm_common",
  "clap",
+ "ndarray",
  "serde",
  "tera",
  "textwrap",
