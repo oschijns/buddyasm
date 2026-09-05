@@ -25,8 +25,11 @@ fn main() -> Result<(), anyhow::Error> {
     // Read command-line arguments
     let args = Cli::parse();
 
+    // Handle Form Feed characters
+    let text = args.text.replace(r"\x0C", "\x0C");
+
     let config = Config::new(args.line_length, args.page_size);
-    let text = config.reformat(&args.text).to_serde();
+    let text = config.split(&text);
     let json = serde_json::to_string_pretty(&text)?;
 
     print!("{}", json);
