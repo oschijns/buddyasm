@@ -30,10 +30,12 @@ thiserror.workspace = true
 
 # Serialize & deserialize data
 serde.workspace = true
+serde_json = "1.0"
 
 # Allow reformatting text so that it fits the target text box
 textwrap = "0.16"
-ndarray = { version = "0.17", features = ["rayon"] }
+ndarray = { version = "0.17", features = ["rayon", "serde"] }
+itertools = "0.15"
 
 # Generate source files from data processed
 tera = { version = "2", features = ["fast"] }

@@ -24,6 +24,20 @@ use std::{
 };
 use tera::Tera;
 
+/// Command-line interface
+#[derive(Debug, clap::Parser)]
+struct Cli {
+    /// Path to the manifest file to load.
+    /// If not specified, defaults to `tileset.manifest.toml` in the current directory.
+    #[clap(short, long)]
+    manifest: Option<OsString>,
+
+    /// Output directory override.
+    /// If not specified, defaults to `output` next to the manifest file.
+    #[clap(short, long)]
+    output: Option<OsString>,
+}
+
 fn main() -> Result<(), anyhow::Error> {
     // Read command-line arguments
     let args = Cli::parse();
@@ -98,18 +112,4 @@ fn main() -> Result<(), anyhow::Error> {
     }
 
     Ok(())
-}
-
-/// Command-line interface
-#[derive(Debug, clap::Parser)]
-struct Cli {
-    /// Path to the manifest file to load.
-    /// If not specified, defaults to `tileset.manifest.toml` in the current directory.
-    #[clap(short, long)]
-    manifest: Option<OsString>,
-
-    /// Output directory override.
-    /// If not specified, defaults to `output` next to the manifest file.
-    #[clap(short, long)]
-    output: Option<OsString>,
 }

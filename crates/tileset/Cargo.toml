@@ -37,7 +37,7 @@ strum = { version = "0.28", features = ["derive"] }
 
 # Process matrix data
 ndarray = { version = "0.17", features = ["rayon", "serde"] }
-itertools = "0.14"
+itertools = "0.15"
 
 # Serialize the data into a contiguous sequence
 bytes = "1.11"
