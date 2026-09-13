@@ -20,14 +20,18 @@ output = "../../../output/snes"
 # Templating configuration
 [templating]
 
-# Optional template includes
-# Can be either paths or glob patterns
-includes = []
+# Optional directory of templates to include
+includes = "templates"
+
+# Override prefixes
+prefix_bin = "0b"
+prefix_oct = "0o"
+prefix_hex = "0x"
 
 # Override delimiters
-delimiter_block = "{%%}"
-delimiter_variable = "{{}}"
-delimiter_comment = "{##}"
+delimiter_block    = ["{%", "%}"]
+delimiter_variable = ["{{", "}}"]
+delimiter_comment  = ["{#", "#}"]
 
 
 # List of entries to process

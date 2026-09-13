@@ -1,10 +1,12 @@
 use buddyasm_common::system::System;
+use minijinja::syntax::SyntaxConfig;
 use serde::Deserialize;
 use std::{
     borrow::Cow,
     path::{Path, PathBuf},
 };
-use tera::Delimiters;
+
+use crate::manifest::default::{PREFIX_BIN, PREFIX_HEX, PREFIX_OCT};
 
 /// Configuration of the input stack to process
 #[derive(Debug, Clone, Deserialize)]
@@ -76,7 +78,7 @@ pub struct Config {
 pub struct Templating {
     /// List of templates includes if any.
     #[serde(default, alias = "include")]
-    pub includes: Vec<PathBuf>,
+    pub includes: Option<PathBuf>,
 
     /// Prefix for binary literals
     /// Defaults to `0b`
@@ -95,42 +97,70 @@ pub struct Templating {
 
     /// Override delimiter for template blocks
     /// Defaults to `{%%}`
-    #[serde(default = "default::delimiter_block")]
-    pub delimiter_block: String,
+    #[serde(default)]
+    pub delimiter_block: Option<[String; 2]>,
 
     /// Override delimiter for template variables
     /// Defaults to `{{}}`
-    #[serde(default = "default::delimiter_variable")]
-    pub delimiter_variable: String,
+    #[serde(default)]
+    pub delimiter_variable: Option<[String; 2]>,
 
     /// Override delimiter for template comments
     /// Defaults to `{##}`
-    #[serde(default = "default::delimiter_comment")]
-    pub delimiter_comment: String,
+    #[serde(default)]
+    pub delimiter_comment: Option<[String; 2]>,
+
+    /// Enable line statement using the provided prefix
+    #[serde(default)]
+    pub prefix_statement: Option<String>,
+
+    /// Enable line comment using the provided prefix
+    #[serde(default)]
+    pub prefix_comment: Option<String>,
+}
+
+/// Build the default config for templates
+impl Default for Templating {
+    fn default() -> Self {
+        Self {
+            includes: None,
+            prefix_bin: PREFIX_BIN.to_string(),
+            prefix_oct: PREFIX_OCT.to_string(),
+            prefix_hex: PREFIX_HEX.to_string(),
+            delimiter_block: None,
+            delimiter_variable: None,
+            delimiter_comment: None,
+            prefix_statement: None,
+            prefix_comment: None,
+        }
+    }
 }
 
 impl Templating {
     /// Get overridden template delimiters
-    pub fn get_delimiters(&self) -> Delimiters {
-        fn split(delimiter: &str) -> [Cow<'static, str>; 2] {
-            let parts = delimiter.split_at(2);
-            [
-                Cow::Owned(parts.0.to_string()),
-                Cow::Owned(parts.1.to_string()),
-            ]
+    pub fn get_syntax_config(&self) -> Result<SyntaxConfig, minijinja::Error> {
+        let mut builder = SyntaxConfig::builder();
+
+        // Jinja blocks
+        if let Some([a, b]) = &self.delimiter_block {
+            builder.block_delimiters(Cow::Owned(a.clone()), Cow::Owned(b.clone()));
+        }
+        if let Some([a, b]) = &self.delimiter_variable {
+            builder.variable_delimiters(Cow::Owned(a.clone()), Cow::Owned(b.clone()));
+        }
+        if let Some([a, b]) = &self.delimiter_comment {
+            builder.comment_delimiters(Cow::Owned(a.clone()), Cow::Owned(b.clone()));
         }
 
-        let [block_start, block_end] = split(&self.delimiter_block);
-        let [variable_start, variable_end] = split(&self.delimiter_variable);
-        let [comment_start, comment_end] = split(&self.delimiter_comment);
-        Delimiters {
-            block_start,
-            block_end,
-            variable_start,
-            variable_end,
-            comment_start,
-            comment_end,
+        // Jinja lines
+        if let Some(a) = &self.prefix_statement {
+            builder.line_statement_prefix(Cow::Owned(a.clone()));
         }
+        if let Some(a) = &self.prefix_comment {
+            builder.line_comment_prefix(Cow::Owned(a.clone()));
+        }
+
+        builder.build()
     }
 }
 
@@ -219,15 +249,6 @@ pub mod default {
     /// Default prefix for hexadecimal literals
     pub const PREFIX_HEX: &str = "0x";
 
-    /// Default delimiter for template blocks
-    pub const DELIMITER_BLOCK: &str = "{%%}";
-
-    /// Default delimiter for template variables
-    pub const DELIMITER_VARIABLE: &str = "{{}}";
-
-    /// Default delimiter for template comments
-    pub const DELIMITER_COMMENT: &str = "{##}";
-
     /// Prefix to use for binary notation
     #[inline]
     pub(crate) fn prefix_bin() -> String {
@@ -244,23 +265,5 @@ pub mod default {
     #[inline]
     pub(crate) fn prefix_hex() -> String {
         PREFIX_HEX.to_string()
-    }
-
-    /// Delimiters for template blocks
-    #[inline]
-    pub(crate) fn delimiter_block() -> String {
-        DELIMITER_BLOCK.to_string()
-    }
-
-    /// Delimiters for variable blocks
-    #[inline]
-    pub(crate) fn delimiter_variable() -> String {
-        DELIMITER_VARIABLE.to_string()
-    }
-
-    /// Delimiters for comment blocks
-    #[inline]
-    pub(crate) fn delimiter_comment() -> String {
-        DELIMITER_COMMENT.to_string()
     }
 }

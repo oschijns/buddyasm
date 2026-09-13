@@ -56,8 +56,7 @@ ouroboros = "0.18"
 tiled = "0.16"
 
 # Generate source files from data processed
-tera = { version = "2", features = ["fast"] }
-
+minijinja = { version = "2.24", features = ["custom_syntax"] }
 
 # Command-line arguments
 clap = { version = "4.6", features = ["derive"], optional = true }

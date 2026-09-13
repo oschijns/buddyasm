@@ -15,14 +15,14 @@ use buddyasm_tileset::{
 };
 use clap::{self, Parser};
 use image::EncodableLayout;
+use minijinja::Environment;
 use std::{
     env,
     ffi::OsString,
     fs::File,
-    io::Write,
+    io::{BufWriter, Write},
     path::{Path, PathBuf},
 };
-use tera::Tera;
 
 /// Command-line interface
 #[derive(Debug, clap::Parser)]
@@ -71,9 +71,9 @@ fn main() -> Result<(), anyhow::Error> {
     };
 
     // We need a renderer for generating the sources
-    let mut tera = Tera::new();
+    let mut env = Environment::new();
     template::setup(
-        &mut tera,
+        &mut env,
         &manifest.get_path(),
         manifest.templating.as_ref(),
         profile.long_word(),
@@ -81,7 +81,7 @@ fn main() -> Result<(), anyhow::Error> {
 
     // Create the input stack to process and generate the output stack
     let input = prepare(profile, &manifest)?;
-    template::load_templates(&mut tera, &manifest.get_path(), &input.stack)?;
+    template::load_templates(&mut env, &manifest.get_path(), &input.stack)?;
     let output = process_stack(&input)?;
 
     // serialize the result
@@ -101,13 +101,18 @@ fn main() -> Result<(), anyhow::Error> {
         }
 
         // Generate the source file if requested
-        if let Some(template) = &entry.template {
+        if let Some(template) = &entry.template
+            && let Some(temp_name) = template.file_name().and_then(|t| t.to_str())
+        {
+            // Construct the output file
             let mut path_file = out_path.join(&entry.name);
             if let Some(ext) = template.extension() {
                 path_file.set_extension(ext);
             }
-            let mut file = File::create(path_file)?;
-            render(&tera, &template.to_string_lossy(), &entry.image, &mut file)?;
+            let mut file = BufWriter::new(File::create(path_file)?);
+
+            // Render the template to the file
+            render(&env, temp_name, &entry.image, &mut file)?;
         }
     }
 
