@@ -107,6 +107,12 @@ impl Aseprite {
             Err(err) => Err(InError::Aseprite(err)),
         })
     }
+
+    /// Access the file loaded
+    #[inline]
+    pub fn file(&self) -> &AsepriteFile<'_> {
+        self.borrow_file().as_ref()
+    }
 }
 
 /// Manual implementation of Debug trait because of ouroboros macro

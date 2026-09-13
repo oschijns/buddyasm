@@ -1,13 +1,8 @@
-use crate::data::{coords::Coords, flip::Flip, tilemap::TileData, tileset::TileSet};
+use crate::data::{coords::Coords, tilemap::TileData, tileset::TileSet};
 use core::{error, fmt};
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
-use std::{
-    cell::RefCell,
-    collections::{BTreeMap, HashMap},
-    path::PathBuf,
-    rc::Rc,
-};
+use std::{collections::BTreeMap, path::PathBuf, rc::Rc};
 
 /// TileSet generated and associated index maps
 #[derive(Debug)]
@@ -46,50 +41,29 @@ pub enum OutputImage {
     Static(OutMap),
 
     /// Output an animated image
-    Animated(Vec<OutMap>),
+    Animated(OutAnimated),
 }
 
-/* TODO rework
 /// Store the data to reconstruct an animated sprite
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum OutputAnimation {
-    /// Produce a single animation
-    Normal(Vec<OutMap>),
+pub struct OutAnimated {
+    /// Store the list of frames to be indexed to reconstruct the animation
+    frames: Vec<OutMap>,
 
-    /// Produce left and right variants of the animation
-    LeftRight {
-        /// Left variant of the animation
-        left: Vec<OutMap>,
-
-        /// RIght variant of the animation
-        right: Vec<OutMap>,
-    },
-
-    /// Produce up and down variants of the animation
-    UpDown {
-        /// Up variant of the animation
-        up: Vec<OutMap>,
-
-        /// Down variant of the animation
-        down: Vec<OutMap>,
-    },
-
-    /// Produce variants for all four directions
-    FourWays {
-        /// Up-Left variant of the animation
-        up_left: Vec<OutMap>,
-
-        /// Up-Right variant of the animation
-        up_right: Vec<OutMap>,
-
-        /// Down-Left variant of the animation
-        down_left: Vec<OutMap>,
-
-        /// Down-Right variant of the animation
-        down_right: Vec<OutMap>,
-    },
+    /// Animation frames indexed
+    animations: BTreeMap<String, Vec<OutFrame>>,
 }
-*/
+
+/// Data related to a frame of an animation.
+/// This includes the index of the frame in the storage and the duration.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct OutFrame {
+    /// Index of the frame in the `frames` buffer
+    index: u16,
+
+    /// Duration of the frame in ticks
+    duration: u16,
+}
 
 /// Indexes map to reconstruct the pictural data
 #[derive(Debug, Clone)]
@@ -174,7 +148,7 @@ impl fmt::Display for OutputStackError {
 impl error::Error for OutputStackError {}
 
 /// Error encountered when processing an input image
-#[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug)]
 pub enum OutError {
     /// If no palette match the given tile
     #[error("No matching palette for tile at {0}")]
@@ -191,4 +165,11 @@ pub enum OutError {
     /// The given index is out of the boundaries of the target tileset
     #[error("Given index 0x{0:4x} is out of bound")]
     InvalidIndex(usize),
+
+    /// Could not identify the flipping flag from an animated sprite
+    #[error("Could not parse the flipping flag from an animated sprite: {0}")]
+    ParseFlipFlag(#[from] strum::ParseError),
+
+    #[error("Failed to render aseprite image: {0}")]
+    Aseprite(#[from] aseprite_loader::loader::LoadImageError),
 }

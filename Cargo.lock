@@ -306,6 +306,7 @@ dependencies = [
  "minijinja",
  "ndarray",
  "ouroboros",
+ "regex",
  "serde",
  "serde_json",
  "strum 0.28.0",

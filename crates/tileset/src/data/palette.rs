@@ -46,7 +46,7 @@ where
     pub fn identify_tile<Q>(
         &self,
         img: &ImageBuffer<P, Q>,
-    ) -> Result<(usize, Tile), NoPaletteMatchError>
+    ) -> Result<(usize, bool, Tile), NoPaletteMatchError>
     where
         P: PartialEq,
         [P::Subpixel]: EncodableLayout,
@@ -57,6 +57,7 @@ where
 
         // Create a tile to store the result
         let mut tile = Array2::zeros(to_index(w, h));
+        let mut pixel_set = false;
 
         // Try each palette successively
         'pal: for (i, palette) in self.0.columns().into_iter().enumerate() {
@@ -68,6 +69,7 @@ where
                     if *pixel == *color {
                         // Store the corresponding index in the tile we are making
                         tile[to_index(x, y)] = j as Pix;
+                        pixel_set = true;
 
                         // We can move on to the next pixel
                         continue 'pix;
@@ -81,7 +83,7 @@ where
 
             // We have filled the tile with indexes
             // the palette we used is a full match.
-            return Ok((i, Tile::new(tile)));
+            return Ok((i, !pixel_set, Tile::new(tile)));
         }
 
         // We've look into each color of the palette selected but could
@@ -100,7 +102,7 @@ macro_rules! impl_load_palette {
                 const BLACK: $color = $black();
 
                 // load the image into a RGBA image
-                let img = image::io::Reader::open(path)?.decode()?.$into();
+                let img = image::ImageReader::open(path)?.decode()?.$into();
 
                 // Convert it into a 2D matrix
                 let width = img.width() as usize;

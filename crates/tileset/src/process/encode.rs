@@ -310,7 +310,7 @@ impl EncodeTileData for ProfileNeoGeo {
          */
         let index = (tile.tile_index & 0xFFFF) as u16;
         let palette = ((tile.palette_index & 0xFF) << 8) as u16;
-        let high = ((tile.tile_index & 0xF_0000) >> 4) as u16;
+        let high = ((tile.tile_index as u32 & 0xF_0000) >> 4) as u16;
         let flip = tile.flip as u16;
         let attr = palette | high | flip;
         EncodedTile { index, attr }

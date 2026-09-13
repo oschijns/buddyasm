@@ -51,6 +51,7 @@ image = { version = "0.25", features = ["bmp", "png"] }
 # Load Aseprite file
 aseprite-loader = "0.4"
 ouroboros = "0.18"
+regex = "1.13"
 
 # Load Tiled file
 tiled = "0.16"
