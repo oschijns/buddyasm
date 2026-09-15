@@ -1,5 +1,5 @@
 use crate::{
-    data::{coords::Dimensions, mapping::CharacterMapping, palette::PaletteSetRgba},
+    data::{coords::Dimensions, image::to_img, mapping::CharacterMapping, palette::Palette},
     input_stack::{
         Aseprite, InError, InputConfig, InputEntry, InputImage, InputStack, InputStackError,
     },
@@ -8,7 +8,7 @@ use crate::{
     profile::Profile,
 };
 use buddyasm_common::manifest::Manifest as _;
-use image::open;
+use image::{GenericImageView, open};
 
 /// Load an input stack from the provided config
 pub fn prepare(profile: Profile, manifest: &Manifest) -> Result<InputStack, InputStackError> {
@@ -20,7 +20,7 @@ pub fn prepare(profile: Profile, manifest: &Manifest) -> Result<InputStack, Inpu
     // Load the default palette
     let default_palette = if let Some(path) = &manifest.config.default_palette {
         let path = manifest.evaluate_path(path);
-        match PaletteSetRgba::load_palette(&path) {
+        match Palette::load_palette(&path) {
             Ok(palette) => Some(palette),
             Err(err) => {
                 // Default palette is not valid
@@ -70,7 +70,7 @@ struct Context<'m> {
     manifest: &'m Manifest,
 
     /// Default palette (if any was defined)
-    default_palette: Option<PaletteSetRgba>,
+    default_palette: Option<Palette>,
 
     /// Loader for tiled files
     tiled_loader: tiled::Loader,
@@ -84,7 +84,7 @@ impl<'m> Context<'m> {
         // Check if we have a palette override for this entry
         let palette = if let Some(path_palette) = &entry.palette {
             let path = self.manifest.evaluate_path(path_palette);
-            match PaletteSetRgba::load_palette(&path) {
+            match Palette::load_palette(&path) {
                 Ok(palette) => palette,
                 Err(err) => {
                     // Palette specified for entry is not valid
@@ -156,7 +156,7 @@ impl<'m> Context<'m> {
             })
         } else {
             // evaluate the number of entries to generate
-            let image = open(&img_path)?.to_rgba8();
+            let image = open(&img_path)?;
 
             // Check if we require a fixed mapping
             let image = if !entry.fixed_mapping.is_empty() {

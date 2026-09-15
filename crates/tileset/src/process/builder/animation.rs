@@ -1,10 +1,9 @@
 use super::*;
-use crate::{data::palette::PaletteSet, input_stack::Aseprite, output_stack::OutError};
+use crate::{data::palette::Palette, input_stack::Aseprite, output_stack::OutError};
 use aseprite_loader::loader::{AsepriteFile, LayerSelection, Tag};
 use core::ops::Deref;
-use image::{EncodableLayout, ImageBuffer, Pixel, Rgba, RgbaImage};
+use image::{EncodableLayout, Pixel, RgbaImage};
 use itertools::Itertools;
-use ndarray::Array2;
 use regex::Regex;
 use std::{str::FromStr, sync::LazyLock};
 use strum::ParseError;
@@ -14,7 +13,7 @@ impl Builder {
     pub(super) fn process_animation<P, Q>(
         &mut self,
         aseprite: &Aseprite,
-        pal: &PaletteSet<P>,
+        pal: &Palette,
     ) -> Result<(), Vec<OutError>>
     where
         P: 'static + Pixel + PartialEq,

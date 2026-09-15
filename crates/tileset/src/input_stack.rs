@@ -1,10 +1,10 @@
 use crate::{
-    data::{coords::TileSize, flip::Flip, mapping::CharacterMapping, palette::PaletteSetRgba},
+    data::{coords::TileSize, flip::Flip, mapping::CharacterMapping, palette::Palette},
     profile::Profile,
 };
 use aseprite_loader::loader::{AsepriteFile, LoadSpriteError};
 use core::{error, fmt};
-use image::{ImageError, RgbaImage};
+use image::{DynamicImage, ImageError, RgbaImage};
 use ouroboros::self_referencing;
 use std::{
     fs, io,
@@ -50,7 +50,7 @@ pub struct InputEntry {
     pub image: InputImage,
 
     /// Palette to use for the image
-    pub palette: PaletteSetRgba,
+    pub palette: Palette,
 
     /// Whether to output a JSON file with the tile data
     pub output_json: bool,
@@ -65,12 +65,12 @@ pub struct InputEntry {
 #[derive(Debug)]
 pub enum InputImage {
     /// static image
-    Static(RgbaImage),
+    Static(DynamicImage),
 
     /// static image with fixed target positions
     FixedPosition {
         /// Input image to process
-        image: RgbaImage,
+        image: DynamicImage,
 
         /// Fixed mapping for the tiles
         mapping: CharacterMapping,

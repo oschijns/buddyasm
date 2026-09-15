@@ -1,6 +1,6 @@
 //! Tile and TileSet
 
-use crate::data::{coords::TileSize, flip::Flip, palette::to_index};
+use crate::data::{coords::TileSize, flip::Flip, image::to_index};
 use core::hash::{Hash, Hasher};
 use ndarray::{Array2, Axis};
 use std::rc::Rc;

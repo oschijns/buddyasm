@@ -27,12 +27,12 @@ impl Coords {
 
     /// Get the bounding box covering the tile in pixels
     /// so that it can be used directly with ImageBuffer::view method.
-    pub fn bounds(self, size: TileSize) -> [u32; 4] {
+    pub fn bounds(self, size: TileSize) -> [Ix; 4] {
         let [tx, ty] = self.0;
         let [sx, sy] = size.0;
         let px = tx * sx;
         let py = ty * sy;
-        [px, py, sx, sy]
+        [px as Ix, py as Ix, sx as Ix, sy as Ix]
     }
 }
 
@@ -76,6 +76,14 @@ impl Dimensions {
         let [w, h] = self.0;
         let [x, y] = coords.0;
         x < w && y < h
+    }
+
+    /// Dimensions from width and height of image with tile size
+    #[inline]
+    pub fn from_ix2(dim: (Ix, Ix), size: TileSize) -> Self {
+        let (ix, iy) = dim;
+        let [sx, sy] = size.0;
+        Self([ix as u32 / sx, iy as u32 / sy])
     }
 
     /// Dimensions from width and height of image with tile size

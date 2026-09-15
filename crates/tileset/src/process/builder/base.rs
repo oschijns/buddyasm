@@ -3,32 +3,22 @@ use crate::{
     data::{
         coords::Dimensions,
         flip::Flip,
+        image::Img,
         mapping::CharacterMapping,
-        palette::PaletteSet,
+        palette::Palette,
         tilemap::{TileData, TileMap},
     },
     output_stack::OutError,
 };
-use core::ops::Deref;
-use image::{EncodableLayout, GenericImageView, ImageBuffer, Pixel};
 use itertools::Itertools;
-use ndarray::{Array2, Ix2};
+use ndarray::{Array2, Ix2, s};
 
 impl Builder {
     /// Process the given images with the associated palette
-    pub(super) fn process<P, Q>(
-        &mut self,
-        img: &ImageBuffer<P, Q>,
-        pal: &PaletteSet<P>,
-    ) -> Result<TileMap, Vec<OutError>>
-    where
-        P: 'static + Pixel + PartialEq,
-        [P::Subpixel]: EncodableLayout,
-        Q: 'static + Deref<Target = [P::Subpixel]>,
-    {
+    pub(super) fn process(&mut self, img: &Img, pal: &Palette) -> Result<TileMap, Vec<OutError>> {
         // Get the dimensions of the input images in tiles.
         let tile_size = self.config.tile_size;
-        let dims = Dimensions::from_img(img.dimensions(), tile_size);
+        let dims = Dimensions::from_ix2(img.dim(), tile_size);
 
         // Create a container to store index data
         let mut tile_map = Array2::<TileData>::default(Ix2::from(dims));
@@ -44,10 +34,10 @@ impl Builder {
 
             // Extract a sub part of the image
             let [px0, py0, px1, py1] = coords.bounds(tile_size);
-            let sub_img = img.view(px0, py0, px1, py1);
+            let sub_img = img.slice(s![px0..px1, py0..py1]);
 
             // Try to convert the sub portion of the image into a tile
-            let res = pal.identify_tile(&sub_img.to_image());
+            let res = pal.identify_tile(&sub_img);
             match res {
                 Ok((palette_index, empty_tile, tile)) => {
                     // We identified a tile with the corresponding palette.
@@ -91,20 +81,15 @@ impl Builder {
 
     /// Process the given images with the associated palette while enforcing
     /// a target position for each of the tiles.
-    pub(super) fn process_fixed<P, Q>(
+    pub(super) fn process_fixed(
         &mut self,
-        img: &ImageBuffer<P, Q>,
-        pal: &PaletteSet<P>,
+        img: &Img,
+        pal: &Palette,
         map: &CharacterMapping,
-    ) -> Result<(), Vec<OutError>>
-    where
-        P: 'static + Pixel + PartialEq,
-        [P::Subpixel]: EncodableLayout,
-        Q: 'static + Deref<Target = [P::Subpixel]>,
-    {
+    ) -> Result<(), Vec<OutError>> {
         // Get the dimensions of the input images in tiles.
         let tile_size = self.config.tile_size;
-        let dims = Dimensions::from_img(img.dimensions(), tile_size);
+        let dims = Dimensions::from_ix2(img.dim(), tile_size);
 
         // Push errors into this list
         let mut errors = Vec::<OutError>::new();
@@ -125,10 +110,10 @@ impl Builder {
 
             // Extract a sub part of the image
             let [px0, py0, px1, py1] = coords.bounds(tile_size);
-            let sub_img = img.view(px0, py0, px1, py1);
+            let sub_img = img.slice(s![px0..px1, py0..py1]);
 
             // Try to convert the sub portion of the image into a tile
-            let res = pal.identify_tile(&sub_img.to_image());
+            let res = pal.identify_tile(&sub_img);
             match res {
                 Ok((_, _, tile)) => {
                     // We identified the tile with it's corresponding palette.

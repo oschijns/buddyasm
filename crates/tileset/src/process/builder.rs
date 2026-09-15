@@ -9,6 +9,7 @@ pub mod animation;
 use crate::{
     data::{
         flip::Flip,
+        image::{dyn_to_img, to_img},
         tileset::{Tile, TileSet},
     },
     input_stack::{InputConfig, InputEntry, InputImage, InputStack},
@@ -155,7 +156,8 @@ impl Builder {
         match &entry.image {
             // Input is a common static image
             InputImage::Static(image) => {
-                let tile_map = self.process(image, &entry.palette)?;
+                let img = dyn_to_img(&image);
+                let tile_map = self.process(&img, &entry.palette)?;
                 // Encode the tiles for the target system
                 let out_map = encode_tiles(profile, &tile_map);
                 Ok(Some(OutputEntry {
@@ -167,7 +169,8 @@ impl Builder {
             }
             // Input is a character set (or similar)
             InputImage::FixedPosition { image, mapping } => {
-                let _ = self.process_fixed(image, &entry.palette, mapping)?;
+                let img = dyn_to_img(&image);
+                let _ = self.process_fixed(&img, &entry.palette, mapping)?;
                 Ok(None)
             }
             InputImage::Aseprite(aseprite) => {
