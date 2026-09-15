@@ -2,7 +2,9 @@ use super::*;
 use crate::{data::palette::PaletteSet, input_stack::Aseprite, output_stack::OutError};
 use aseprite_loader::loader::{AsepriteFile, LayerSelection, Tag};
 use core::ops::Deref;
-use image::{EncodableLayout, Pixel};
+use image::{EncodableLayout, ImageBuffer, Pixel, Rgba, RgbaImage};
+use itertools::Itertools;
+use ndarray::Array2;
 use regex::Regex;
 use std::{str::FromStr, sync::LazyLock};
 use strum::ParseError;
@@ -135,6 +137,26 @@ impl<'f> ProcessSequence<'f> {
         }
 
         Ok(())
+    }
+
+    // TODO:
+    // replace this by Array2 and do the same for the base processes
+    // This way we can reuse them here without dealing with the clumky ImageBuffer interface.
+
+    /// Convert the internal write buffer into a processable image buffer
+    fn make_image_buffer(&self) -> RgbaImage {
+        let mut image = RgbaImage::new(self.width as u32, self.height as u32);
+
+        // Copy the pixels from the buffer to the image
+        for ((&r, &g, &b, &a), pix) in self.write_buffer.iter().tuples().zip(image.pixels_mut()) {
+            let pix = pix.channels_mut();
+            pix[0] = r;
+            pix[1] = g;
+            pix[2] = b;
+            pix[3] = a;
+        }
+
+        image
     }
 }
 
