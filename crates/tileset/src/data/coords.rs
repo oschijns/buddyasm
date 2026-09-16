@@ -30,9 +30,9 @@ impl Coords {
     pub fn bounds(self, size: TileSize) -> [Ix; 4] {
         let [tx, ty] = self.0;
         let [sx, sy] = size.0;
-        let px = tx * sx;
-        let py = ty * sy;
-        [px as Ix, py as Ix, sx as Ix, sy as Ix]
+        let px = (tx * sx) as Ix;
+        let py = (ty * sy) as Ix;
+        [px, px + sx as Ix, py, py + sy as Ix]
     }
 }
 

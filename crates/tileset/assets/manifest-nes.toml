@@ -45,20 +45,20 @@ image = "font_vincent.png"
 fixed_mapping = [ { start = 0x20, end = 0x7F, target = 0x20 } ]
 
 
-[[entry]]
-
-# Optional name for the entry
-name = "title-screen"
-
-# Load a sprite work
-image = "title.png"
-
-# Use a custom palette
-palette = "palette-title.png"
-
-# Should we output the index data in JSON format
-# Only applicable for static and animated spritework entries
-output_json = true
-
-# Which template file to use for rendering
-template = "template.h"
+#[[entry]]
+#
+## Optional name for the entry
+#name = "title-screen"
+#
+## Load a sprite work
+#image = "title.png"
+#
+## Use a custom palette
+#palette = "palette-title.png"
+#
+## Should we output the index data in JSON format
+## Only applicable for static and animated spritework entries
+#output_json = true
+#
+## Which template file to use for rendering
+#template = "template.h"

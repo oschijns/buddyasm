@@ -1,6 +1,6 @@
 use image::{DynamicImage, ImageBuffer, Luma, LumaA, Pixel, Rgb, Rgba};
 use ndarray::{Array2, Ix, Ix2};
-use std::ops::Deref;
+use std::{fmt, ops::Deref};
 
 /// Common image format for processing.
 /// Basically a 2D matrix of 32 bits values.
@@ -14,13 +14,13 @@ pub fn dyn_to_img(dyn_img: &DynamicImage) -> Img {
         DynamicImage::ImageLumaA8 (image) => to_img(image),
         DynamicImage::ImageRgb8   (image) => to_img(image),
         DynamicImage::ImageRgba8  (image) => to_img(image),
-        DynamicImage::ImageLuma16 (image) => todo!(),
-        DynamicImage::ImageLumaA16(image) => todo!(),
-        DynamicImage::ImageRgb16  (image) => todo!(),
-        DynamicImage::ImageRgba16 (image) => todo!(),
-        DynamicImage::ImageRgb32F (image) => todo!(),
-        DynamicImage::ImageRgba32F(image) => todo!(),
-        _ => todo!(),
+        DynamicImage::ImageLuma16 (image) => to_img(image),
+        DynamicImage::ImageLumaA16(image) => to_img(image),
+        DynamicImage::ImageRgb16  (image) => to_img(image),
+        DynamicImage::ImageRgba16 (image) => to_img(image),
+        DynamicImage::ImageRgb32F (image) => to_img(image),
+        DynamicImage::ImageRgba32F(image) => to_img(image),
+        _ => unimplemented!("Unsupported image variant"),
     }
 }
 
@@ -43,6 +43,22 @@ where
     out_img
 }
 
+/// Wrapper to print the image data
+pub struct PrintImg<'i>(pub &'i Img);
+
+impl<'i> fmt::Display for PrintImg<'i> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for col in self.0.rows() {
+            write!(f, "[ ")?;
+            for &cell in col.iter() {
+                write!(f, "{:0>8x}, ", cell)?;
+            }
+            writeln!(f, "]")?;
+        }
+        Ok(())
+    }
+}
+
 /// Convert image coordinates into ndarray coordinates
 #[inline]
 pub(crate) fn to_index(x: u32, y: u32) -> Ix2 {
@@ -58,19 +74,12 @@ pub trait ToPix {
     fn to_pix(self) -> Color;
 }
 
-/// Convert the RGBA type into an 32 bits integer
-impl ToPix for Rgba<u8> {
+/// Convert the Luma type into an 32 bits integer
+impl ToPix for Luma<u8> {
     #[inline]
     fn to_pix(self) -> Color {
-        Color::from_ne_bytes(self.0)
-    }
-}
-/// Convert the RGB type into an 32 bits integer
-impl ToPix for Rgb<u8> {
-    #[inline]
-    fn to_pix(self) -> Color {
-        let [r, g, b] = self.0;
-        Color::from_ne_bytes([r, g, b, 0xFF])
+        let [l] = self.0;
+        Color::from_be_bytes([l, l, l, 0xFF])
     }
 }
 
@@ -79,15 +88,113 @@ impl ToPix for LumaA<u8> {
     #[inline]
     fn to_pix(self) -> Color {
         let [l, a] = self.0;
-        Color::from_ne_bytes([l, l, l, a])
+        if a > 0x7F {
+            Color::from_be_bytes([l, l, l, 0xFF])
+        } else {
+            0
+        }
+    }
+}
+
+/// Convert the RGB type into an 32 bits integer
+impl ToPix for Rgb<u8> {
+    #[inline]
+    fn to_pix(self) -> Color {
+        let [r, g, b] = self.0;
+        Color::from_be_bytes([r, g, b, 0xFF])
+    }
+}
+
+/// Convert the RGBA type into an 32 bits integer
+impl ToPix for Rgba<u8> {
+    #[inline]
+    fn to_pix(self) -> Color {
+        let [r, g, b, a] = self.0;
+        if a > 0x7F {
+            Color::from_be_bytes([r, g, b, 0xFF])
+        } else {
+            0
+        }
     }
 }
 
 /// Convert the Luma type into an 32 bits integer
-impl ToPix for Luma<u8> {
+impl ToPix for Luma<u16> {
     #[inline]
     fn to_pix(self) -> Color {
-        let [l] = self.0;
-        Color::from_ne_bytes([l, l, l, 0xFF])
+        let l = (self.0[0] >> 8) as u8;
+        Color::from_be_bytes([l, l, l, 0xFF])
+    }
+}
+
+/// Convert the Luma with Alpha type into an 32 bits integer
+impl ToPix for LumaA<u16> {
+    #[inline]
+    fn to_pix(self) -> Color {
+        let [l, a] = self.0;
+        if a > 0x7FFF {
+            let l = (l >> 8) as u8;
+            Color::from_be_bytes([l, l, l, 0xFF])
+        } else {
+            0
+        }
+    }
+}
+
+/// Convert the RGB type into an 32 bits integer
+impl ToPix for Rgb<u16> {
+    #[inline]
+    fn to_pix(self) -> Color {
+        let [r, g, b] = self.0;
+        let r = (r >> 8) as u8;
+        let g = (g >> 8) as u8;
+        let b = (b >> 8) as u8;
+        Color::from_be_bytes([r, g, b, 0xFF])
+    }
+}
+
+/// Convert the RGBA type into an 32 bits integer
+impl ToPix for Rgba<u16> {
+    #[inline]
+    fn to_pix(self) -> Color {
+        let [r, g, b, a] = self.0;
+        if a > 0x7FFF {
+            let r = (r >> 8) as u8;
+            let g = (g >> 8) as u8;
+            let b = (b >> 8) as u8;
+            Color::from_be_bytes([r, g, b, 0xFF])
+        } else {
+            0
+        }
+    }
+}
+
+/// Convert the RGB type into an 32 bits integer
+impl ToPix for Rgb<f32> {
+    #[inline]
+    fn to_pix(self) -> Color {
+        const F: f32 = u8::MAX as f32;
+        let [r, g, b] = self.0;
+        let r = (r * F) as u8;
+        let g = (g * F) as u8;
+        let b = (b * F) as u8;
+        Color::from_be_bytes([r, g, b, 0xFF])
+    }
+}
+
+/// Convert the RGBA type into an 32 bits integer
+impl ToPix for Rgba<f32> {
+    #[inline]
+    fn to_pix(self) -> Color {
+        const F: f32 = u8::MAX as f32;
+        let [r, g, b, a] = self.0;
+        if a >= 0.5 {
+            let r = (r * F) as u8;
+            let g = (g * F) as u8;
+            let b = (b * F) as u8;
+            Color::from_be_bytes([r, g, b, 0xFF])
+        } else {
+            0
+        }
     }
 }

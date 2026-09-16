@@ -33,7 +33,7 @@ impl Builder {
             let ix2 = Ix2::from(coords);
 
             // Extract a sub part of the image
-            let [px0, py0, px1, py1] = coords.bounds(tile_size);
+            let [px0, px1, py0, py1] = coords.bounds(tile_size);
             let sub_img = img.slice(s![px0..px1, py0..py1]);
 
             // Try to convert the sub portion of the image into a tile
