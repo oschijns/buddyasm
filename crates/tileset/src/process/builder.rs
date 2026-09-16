@@ -202,7 +202,7 @@ impl Builder {
                     output_json: entry.output_json,
                     template: entry.template.clone(),
                 });
-                */
+                // */
                 todo!("Aseprite not yet supported")
             }
             InputImage::TiledTileset(tileset) => todo!("Tiled files not yet supported"),

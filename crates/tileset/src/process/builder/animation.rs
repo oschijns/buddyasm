@@ -1,13 +1,15 @@
 use super::*;
 use crate::{data::palette::Palette, input_stack::Aseprite, output_stack::OutError};
-use aseprite_loader::loader::{AsepriteFile, LayerSelection, Tag};
+use aseprite_loader::loader::{AsepriteFile, LayerSelection, LoadImageError, Tag};
+use image::{Rgba, RgbaImage};
+use itertools::Itertools;
 use regex::Regex;
 use std::{str::FromStr, sync::LazyLock};
 use strum::ParseError;
 
 impl Builder {
     /// Process an Aseprite file
-    pub(super) fn process_animation(
+    pub(super) fn process_animations(
         &mut self,
         aseprite: &Aseprite,
         pal: &Palette,
@@ -16,9 +18,9 @@ impl Builder {
         let mut errors = Vec::<OutError>::new();
 
         let file = aseprite.file();
-        let mut processor = ProcessSequence::new(file);
+        let mut proc = ProcessSequence::new(file);
         for tag in file.tags() {
-            match processor.process(tag) {
+            match self.process_anim_sequence(&mut proc, pal, tag) {
                 Ok(ok) => {}
                 Err(err) => {
                     errors.push(err);
@@ -74,6 +76,42 @@ impl Builder {
 
         todo!()
     }
+
+    // TODO:
+    // move the list of errors to the builder with proper identification of the location of the errors
+
+    /// Process one animation sequence
+    fn process_anim_sequence<'f>(
+        &mut self,
+        proc: &mut ProcessSequence<'f>,
+        pal: &Palette,
+        tag: &Tag,
+    ) -> Result<(), OutError> {
+        // For now we will use the tag name to specify the `LR`, `UD` flags.
+        let (name, flip) = extract_flip_flag(&tag.name)?;
+
+        // Allocate a buffer to store the frame as images
+        let count = tag.range.clone().count();
+        let mut frames = Vec::<()>::with_capacity(count);
+
+        // Iterate over the frames constituing this animation
+        for i in tag.range.clone().into_iter() {
+            // Convert the image data into an exploitable format
+            proc.render_frame(i as usize)?;
+            let frame_data = &proc.file.frames[i as usize];
+
+            // Process the image as an individual pixel art
+            match self.process(&proc.image, pal) {
+                Ok(tilemap) => {}
+                Err(errors) => {}
+            }
+
+            // Push the frame in the array
+            //frames.push((self.build_image(), frame_data.duration));
+        }
+
+        Ok(())
+    }
 }
 
 /// Data structure for processing an animation sequence defined by a tag.
@@ -81,50 +119,52 @@ struct ProcessSequence<'f> {
     /// Parsed aseprite file
     file: &'f AsepriteFile<'f>,
 
-    // TODO: use an ndarray instead?
     /// Buffer for writing frame image (size == width * height * 4)
     /// Image data will be written as RGBA8
     write_buffer: Vec<u8>,
 
-    /// Width of the image
-    width: usize,
-
-    /// Height of the image
-    height: usize,
+    /// Image buffer to be passed to the builder for further processing
+    image: RgbaImage,
 }
 
 impl<'f> ProcessSequence<'f> {
     /// Create a context for processing animations
     fn new(file: &'f AsepriteFile<'f>) -> Self {
         let (width, height) = file.size();
-        let width = width as usize;
-        let height = height as usize;
 
         // Allocate a buffer for rendering the images
-        let size = width * height * 4;
+        let size = width as usize * height as usize * 4usize;
         let mut write_buffer = Vec::<u8>::with_capacity(size);
         write_buffer.resize(size, 0);
+
+        // Allocate a RGBA image buffer
+        let image = RgbaImage::new(width as u32, height as u32);
 
         Self {
             file,
             write_buffer,
-            width,
-            height,
+            image,
         }
     }
 
-    /// Process one animation sequence
-    fn process(&mut self, tag: &Tag) -> Result<(), OutError> {
-        // For now we will use the tag name to specify the `LR`, `UD` flags.
-        let (name, flip) = extract_flip_flag(&tag.name)?;
+    /// Render the selected frame to the internal buffer
+    fn render_frame(&mut self, frame_index: usize) -> Result<(), LoadImageError> {
+        // Render the frame to the buffer
+        // Pixels are written in RGBA8 format
+        self.file.render_frame(
+            frame_index,
+            &mut self.write_buffer,
+            &LayerSelection::Visible,
+        )?;
 
-        // Iterate over the frames constituing this animation
-        for i in tag.range.clone().into_iter() {
-            // Render the frame to the buffer
-            // Pixels are written in RGBA8 format
-            self.file
-                .render_frame(i as usize, &mut self.write_buffer, &LayerSelection::Visible)?;
-            let frame = &self.file.frames[i as usize];
+        // Write the pixel into the image buffer
+        for ((&r, &g, &b, &a), pix) in self
+            .write_buffer
+            .iter()
+            .tuples()
+            .zip(self.image.pixels_mut())
+        {
+            *pix = Rgba([r, g, b, a]);
         }
 
         Ok(())
