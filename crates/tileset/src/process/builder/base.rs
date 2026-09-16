@@ -4,28 +4,22 @@ use crate::{
         coords::Dimensions,
         flip::Flip,
         mapping::CharacterMapping,
-        palette::PaletteSet,
+        palette::Palette,
         tilemap::{TileData, TileMap},
     },
     output_stack::OutError,
 };
-use core::ops::Deref;
-use image::{EncodableLayout, GenericImageView, ImageBuffer, Pixel};
+use image::{GenericImageView, RgbaImage};
 use itertools::Itertools;
 use ndarray::{Array2, Ix2};
 
 impl Builder {
     /// Process the given images with the associated palette
-    pub(super) fn process<P, Q>(
+    pub(super) fn process(
         &mut self,
-        img: &ImageBuffer<P, Q>,
-        pal: &PaletteSet<P>,
-    ) -> Result<TileMap, Vec<OutError>>
-    where
-        P: 'static + Pixel + PartialEq,
-        [P::Subpixel]: EncodableLayout,
-        Q: 'static + Deref<Target = [P::Subpixel]>,
-    {
+        img: &RgbaImage,
+        pal: &Palette,
+    ) -> Result<TileMap, Vec<OutError>> {
         // Get the dimensions of the input images in tiles.
         let tile_size = self.config.tile_size;
         let dims = Dimensions::from_img(img.dimensions(), tile_size);
@@ -91,17 +85,12 @@ impl Builder {
 
     /// Process the given images with the associated palette while enforcing
     /// a target position for each of the tiles.
-    pub(super) fn process_fixed<P, Q>(
+    pub(super) fn process_fixed(
         &mut self,
-        img: &ImageBuffer<P, Q>,
-        pal: &PaletteSet<P>,
+        img: &RgbaImage,
+        pal: &Palette,
         map: &CharacterMapping,
-    ) -> Result<(), Vec<OutError>>
-    where
-        P: 'static + Pixel + PartialEq,
-        [P::Subpixel]: EncodableLayout,
-        Q: 'static + Deref<Target = [P::Subpixel]>,
-    {
+    ) -> Result<(), Vec<OutError>> {
         // Get the dimensions of the input images in tiles.
         let tile_size = self.config.tile_size;
         let dims = Dimensions::from_img(img.dimensions(), tile_size);

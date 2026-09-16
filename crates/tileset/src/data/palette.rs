@@ -1,57 +1,52 @@
 //! Palette
 
 use crate::data::tileset::{Pix, Tile};
-use core::ops::Deref;
-use image::{EncodableLayout, ImageBuffer, ImageResult, Luma, LumaA, Pixel, Rgb, Rgba};
+use image::{ImageResult, Rgba, RgbaImage};
 use ndarray::{Array2, Ix, Ix2};
 use std::path::Path;
 use std::rc::Rc;
 
 /// Set of palettes to look for in an input image
 #[derive(Debug, Clone)]
-pub struct PaletteSet<C>(pub(crate) Rc<Array2<C>>);
-
-/// RGBA palette set
-pub type PaletteSetRgba = PaletteSet<Rgba<u8>>;
-
-/// RGB palette set
-pub type PaletteSetRgb = PaletteSet<Rgb<u8>>;
-
-/// Grayscale + Alpha palette set
-pub type PaletteSetLumaA = PaletteSet<LumaA<u8>>;
-
-/// Grayscale palette set
-pub type PaletteSetLuma = PaletteSet<Luma<u8>>;
+pub struct Palette(pub(crate) Rc<Array2<Rgba<u8>>>);
 
 /// Error encountered when trying to find a palette for a given tile
 #[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
 #[error("No matching palette for the tile")]
 pub struct NoPaletteMatchError;
 
-impl<C> PaletteSet<C> {
-    /// Create a new palette set
-    #[inline]
-    pub fn new(data: Array2<C>) -> Self {
-        Self(Rc::new(data))
+impl Palette {
+    /// Load a palette from a file
+    pub fn load_palette(path: &Path) -> ImageResult<Self> {
+        // Default color to fill the palette with initialy
+        const BLACK: Rgba<u8> = Rgba([0, 0, 0, 0xFF]);
+
+        // load the image into a RGBA image
+        let img = image::ImageReader::open(path)?.decode()?.into_rgba8();
+
+        // Convert it into a 2D matrix
+        let width = img.width() as usize;
+        let height = img.height() as usize;
+        let mut matrix = Array2::from_elem((width, height), BLACK);
+
+        // Fill the matrix with data
+        for (x, y, pix) in img.enumerate_pixels() {
+            matrix[Ix2(x as usize, y as usize)] = *pix;
+        }
+
+        // Return the palette
+        Ok(Self(Rc::new(matrix)))
     }
 }
 
-impl<P> PaletteSet<P>
-where
-    P: Pixel,
-{
+impl Palette {
     /// Check the content of the provided sub image to try to deduce a palette
     /// index and an encoding of the tile. If no palette defined in this set
     /// matches the provided image, return an error.
-    pub fn identify_tile<Q>(
+    pub fn identify_tile(
         &self,
-        img: &ImageBuffer<P, Q>,
-    ) -> Result<(usize, bool, Tile), NoPaletteMatchError>
-    where
-        P: PartialEq,
-        [P::Subpixel]: EncodableLayout,
-        Q: Deref<Target = [P::Subpixel]>,
-    {
+        img: &RgbaImage,
+    ) -> Result<(usize, bool, Tile), NoPaletteMatchError> {
         // Figure out the dimensions of the input image
         let (w, h) = img.dimensions();
 
@@ -90,59 +85,6 @@ where
         // not find a match. We'll try again with the next palette.
         Err(NoPaletteMatchError)
     }
-}
-
-/// Implement load_palette for the various palette variants
-macro_rules! impl_load_palette {
-    ( $color:ty, $into:ident, $black:ident ) => {
-        impl PaletteSet<$color> {
-            /// Load a palette from a file
-            pub fn load_palette(path: &Path) -> ImageResult<Self> {
-                // Default color to fill the palette with initialy
-                const BLACK: $color = $black();
-
-                // load the image into a RGBA image
-                let img = image::ImageReader::open(path)?.decode()?.$into();
-
-                // Convert it into a 2D matrix
-                let width = img.width() as usize;
-                let height = img.height() as usize;
-                let mut matrix = Array2::from_elem((width, height), BLACK);
-
-                // Fill the matrix with data
-                for (x, y, pix) in img.enumerate_pixels() {
-                    matrix[Ix2(x as usize, y as usize)] = *pix;
-                }
-
-                Ok(Self::new(matrix))
-            }
-        }
-    };
-}
-
-impl_load_palette! { Rgba  <u8>, into_rgba8      , black_rgba8      }
-impl_load_palette! { Rgb   <u8>, into_rgb8       , black_rgb8       }
-impl_load_palette! { LumaA <u8>, into_luma_alpha8, black_luma_alpha8}
-impl_load_palette! { Luma  <u8>, into_luma8      , black_luma8      }
-
-#[inline]
-const fn black_rgba8() -> Rgba<u8> {
-    Rgba([0, 0, 0, 0xff])
-}
-
-#[inline]
-const fn black_rgb8() -> Rgb<u8> {
-    Rgb([0, 0, 0])
-}
-
-#[inline]
-const fn black_luma_alpha8() -> LumaA<u8> {
-    LumaA([0, 0xff])
-}
-
-#[inline]
-const fn black_luma8() -> Luma<u8> {
-    Luma([0])
 }
 
 /// Convert image coordinates into ndarray coordinates

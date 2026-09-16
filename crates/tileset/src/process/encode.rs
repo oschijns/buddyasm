@@ -168,7 +168,7 @@ impl EncodeTileData for ProfileVirtualBoy {
             BgFg::Bg(_) => flip::pos::<5, 4>(tile.flip),
             BgFg::Fg(_) => flip::pos::<5, 4>(tile.flip),
         };
-        let high = ((tile.tile_index >> 16) & 0b111) as u16;
+        let high = ((tile.tile_index >> 8) & 0b111) as u16;
         let attr = palette | flip | high;
         EncodedTile { index, attr }
     }

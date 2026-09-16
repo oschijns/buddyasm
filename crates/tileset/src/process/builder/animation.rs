@@ -1,24 +1,17 @@
 use super::*;
-use crate::{data::palette::PaletteSet, input_stack::Aseprite, output_stack::OutError};
+use crate::{data::palette::Palette, input_stack::Aseprite, output_stack::OutError};
 use aseprite_loader::loader::{AsepriteFile, LayerSelection, Tag};
-use core::ops::Deref;
-use image::{EncodableLayout, Pixel};
 use regex::Regex;
 use std::{str::FromStr, sync::LazyLock};
 use strum::ParseError;
 
 impl Builder {
     /// Process an Aseprite file
-    pub(super) fn process_animation<P, Q>(
+    pub(super) fn process_animation(
         &mut self,
         aseprite: &Aseprite,
-        pal: &PaletteSet<P>,
-    ) -> Result<(), Vec<OutError>>
-    where
-        P: 'static + Pixel + PartialEq,
-        [P::Subpixel]: EncodableLayout,
-        Q: 'static + Deref<Target = [P::Subpixel]>,
-    {
+        pal: &Palette,
+    ) -> Result<(), Vec<OutError>> {
         // Push errors into this list
         let mut errors = Vec::<OutError>::new();
 

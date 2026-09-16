@@ -180,6 +180,7 @@ struct SerialLinear {
 }
 
 /// Serialize the tileset as distinct bitplanes
+#[allow(unused)]
 struct SerialPlaneSplit {
     /// How many bits are used to define a pixel
     bits_per_pixel: usize,
@@ -213,6 +214,7 @@ impl SerialLinear {
 
 impl SerialPlaneSplit {
     /// Define splitted bitplane layout serialization
+    #[allow(unused)]
     #[inline]
     const fn new(bits_per_pixel: usize) -> Self {
         Self { bits_per_pixel }
