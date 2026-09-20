@@ -1,4 +1,6 @@
-use crate::data::{coords::Coords, tilemap::TileData, tileset::TileSet};
+use crate::data::{
+    coords::Coords, palette::NoPaletteMatchError, tilemap::TileData, tileset::TileSet,
+};
 use core::{error, fmt};
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
@@ -128,17 +130,14 @@ impl<'de> Deserialize<'de> for OutMap {
 #[derive(Debug)]
 pub struct OutputStackError {
     /// List of errors grouped by file path
-    pub errors: BTreeMap<PathBuf, Vec<OutError>>,
+    pub errors: BTreeMap<PathBuf, OutError>,
 }
 
 /// Formats the error message for the output stack error
 impl fmt::Display for OutputStackError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (path, errors) in &self.errors {
-            writeln!(f, "{}:", path.display())?;
-            for error in errors {
-                writeln!(f, "  - {}", error)?;
-            }
+        for (path, error) in &self.errors {
+            writeln!(f, "{}: {}", path.display(), error)?;
         }
         Ok(())
     }
@@ -152,19 +151,7 @@ impl error::Error for OutputStackError {}
 pub enum OutError {
     /// If no palette match the given tile
     #[error("No matching palette for tile at ")]
-    NoPaletteMatch(Coords),
-
-    /// There are too many different tiles in the provided image
-    #[error("Too many distinct tiles starting at ")]
-    DistinctOverflow(Coords),
-
-    /// The requested tile position is out of the image
-    #[error("Requested tile position  is out of bound")]
-    OutOfBound(Coords),
-
-    /// The given index is out of the boundaries of the target tileset
-    #[error("Given index 0x{0:4x} is out of bound")]
-    InvalidIndex(usize),
+    Tiles(#[from] TilesError),
 
     /// Could not identify the flipping flag from an animated sprite
     #[error("Could not parse the flipping flag from an animated sprite: {0}")]
@@ -172,4 +159,30 @@ pub enum OutError {
 
     #[error("Failed to render aseprite image: {0}")]
     Aseprite(#[from] aseprite_loader::loader::LoadImageError),
+}
+
+/// List of errors when processing the tiles
+#[derive(thiserror::Error, Debug)]
+#[error("Errors when processing tiles")]
+pub struct TilesError(pub Vec<(Coords, TileError)>);
+
+/// Error encountered when processing tile
+#[repr(u8)]
+#[derive(thiserror::Error, Debug, Clone, Copy)]
+pub enum TileError {
+    /// If no palette match the given tile
+    #[error("No matching palette")]
+    NoPaletteMatch(#[from] NoPaletteMatchError),
+
+    /// There are too many different tiles in the provided image
+    #[error("Too many distinct tiles")]
+    DistinctOverflow,
+
+    /// The requested tile position is out of the image
+    #[error("Requested tile position is out of bound")]
+    OutOfBound,
+
+    /// The given index is out of the boundaries of the target tileset
+    #[error("Given index 0x{0:4x} is out of bound")]
+    InvalidIndex(u16),
 }

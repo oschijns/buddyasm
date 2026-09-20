@@ -151,7 +151,7 @@ impl Builder {
         &mut self,
         profile: &Profile,
         entry: &InputEntry,
-    ) -> Result<Option<OutputEntry>, Vec<OutError>> {
+    ) -> Result<Option<OutputEntry>, OutError> {
         match &entry.image {
             // Input is a common static image
             InputImage::Static(image) => {
