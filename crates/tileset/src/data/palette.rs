@@ -89,6 +89,6 @@ impl Palette {
 
 /// Convert image coordinates into ndarray coordinates
 #[inline]
-pub(crate) fn to_index(x: u32, y: u32) -> Ix2 {
+fn to_index(x: u32, y: u32) -> Ix2 {
     Ix2(x as Ix, y as Ix)
 }

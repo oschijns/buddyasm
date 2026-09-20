@@ -1,7 +1,7 @@
 //! Map a given tile to a target index
 
 use crate::{
-    data::coords::{Coords, Dimensions},
+    data::coords::{Coords, ImgTileDim},
     manifest::CharacterRange,
 };
 use std::{collections::HashMap, rc::Rc};
@@ -18,7 +18,7 @@ impl CharacterMapping {
     }
 
     /// Create mapping from a list of ranges
-    pub fn from_ranges(dimensions: Dimensions, ranges: &[CharacterRange]) -> Self {
+    pub fn from_ranges(dimensions: ImgTileDim, ranges: &[CharacterRange]) -> Self {
         // evaluate the number of entries to generate
         let count = ranges.iter().fold(0usize, |acc, range| acc + range.size());
 
@@ -27,7 +27,7 @@ impl CharacterMapping {
         let mut out = HashMap::with_capacity(count);
         for range in ranges.iter() {
             for i in range.start..range.end {
-                let c = dimensions.to_coords(i);
+                let c = dimensions.index_to_coords_16(i);
                 out.insert(c, range.target + (i - range.start));
             }
         }

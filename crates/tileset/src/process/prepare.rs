@@ -1,5 +1,5 @@
 use crate::{
-    data::{coords::Dimensions, mapping::CharacterMapping, palette::Palette},
+    data::{coords::ImgTileDim, mapping::CharacterMapping, palette::Palette},
     input_stack::{
         Aseprite, InError, InputConfig, InputEntry, InputImage, InputStack, InputStackError,
     },
@@ -161,7 +161,7 @@ impl<'m> Context<'m> {
             // Check if we require a fixed mapping
             let image = if !entry.fixed_mapping.is_empty() {
                 // When a fixed mapping is required processing mapping data
-                let dims = Dimensions::from_img(image.dimensions(), self.config.tile_size);
+                let dims = ImgTileDim::from_img(image.dimensions(), self.config.tile_size);
                 let mapping = CharacterMapping::from_ranges(dims, &entry.fixed_mapping);
                 InputImage::FixedPosition { image, mapping }
             } else {

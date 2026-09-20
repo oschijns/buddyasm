@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     data::{
-        coords::Dimensions,
+        coords::ImgTileDim,
         flip::Flip,
         mapping::CharacterMapping,
         palette::Palette,
@@ -11,7 +11,7 @@ use crate::{
 };
 use image::{GenericImageView, RgbaImage};
 use itertools::Itertools;
-use ndarray::{Array2, Ix2};
+use ndarray::Array2;
 
 impl Builder {
     /// Process the given images with the associated palette
@@ -22,23 +22,23 @@ impl Builder {
     ) -> Result<TileMap, Vec<OutError>> {
         // Get the dimensions of the input images in tiles.
         let tile_size = self.config.tile_size;
-        let dims = Dimensions::from_img(img.dimensions(), tile_size);
+        let dims = ImgTileDim::from_img(img.dimensions(), tile_size);
 
         // Create a container to store index data
-        let mut tile_map = Array2::<TileData>::default(Ix2::from(dims));
+        let mut tile_map = Array2::<TileData>::default(dims.ndarray_dim());
 
         // Push errors into this list
         let mut errors = Vec::<OutError>::new();
 
         // Iterate over each tile of the input image
-        for index in 0..dims.count() {
+        for index in 0..dims.tiles_count() {
             // Define the limits of the tile in pixels
-            let coords = dims.to_coords(index);
-            let ix2 = Ix2::from(coords);
+            let coords = dims.index_to_coords_16(index);
+            let ix2 = dims.index_to_ix2(index);
 
             // Extract a sub part of the image
-            let [px0, py0, px1, py1] = coords.bounds(tile_size);
-            let sub_img = img.view(px0, py0, px1, py1);
+            let [px, py, sx, sy] = dims.index_to_img_view(index);
+            let sub_img = img.view(px, py, sx, sy);
 
             // Try to convert the sub portion of the image into a tile
             let res = pal.identify_tile(&sub_img.to_image());
@@ -93,13 +93,13 @@ impl Builder {
     ) -> Result<(), Vec<OutError>> {
         // Get the dimensions of the input images in tiles.
         let tile_size = self.config.tile_size;
-        let dims = Dimensions::from_img(img.dimensions(), tile_size);
+        let dims = ImgTileDim::from_img(img.dimensions(), tile_size);
 
         // Push errors into this list
         let mut errors = Vec::<OutError>::new();
 
         // Iterate over the positions provided
-        for (&coords, &tile_idx) in map.0.iter() {
+        for (&[ix, iy], &tile_idx) in map.0.iter() {
             // Check that the requested position is valid
             // and that the target index is still free.
             if !self.vacancy[tile_idx] {
@@ -107,14 +107,14 @@ impl Builder {
                 continue;
             }
 
-            if !dims.contains(coords) {
-                errors.push(OutError::OutOfBound(coords));
+            if !dims.contains_16(ix, iy) {
+                errors.push(OutError::OutOfBound([ix, iy]));
                 continue;
             }
 
             // Extract a sub part of the image
-            let [px0, py0, px1, py1] = coords.bounds(tile_size);
-            let sub_img = img.view(px0, py0, px1, py1);
+            let [px, py, sx, sy] = dims.get_img_view(ix as usize, iy as usize);
+            let sub_img = img.view(px, py, sx, sy);
 
             // Try to convert the sub portion of the image into a tile
             let res = pal.identify_tile(&sub_img.to_image());
@@ -125,7 +125,7 @@ impl Builder {
                     self.set_tile(tile_idx, tile);
                 }
                 Err(_) => {
-                    errors.push(OutError::NoPaletteMatch(coords));
+                    errors.push(OutError::NoPaletteMatch([ix, iy]));
                 }
             }
         }

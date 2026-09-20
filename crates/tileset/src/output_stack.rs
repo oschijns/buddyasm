@@ -151,15 +151,15 @@ impl error::Error for OutputStackError {}
 #[derive(thiserror::Error, Debug)]
 pub enum OutError {
     /// If no palette match the given tile
-    #[error("No matching palette for tile at {0}")]
+    #[error("No matching palette for tile at ")]
     NoPaletteMatch(Coords),
 
     /// There are too many different tiles in the provided image
-    #[error("Too many distinct tiles starting at {0}")]
+    #[error("Too many distinct tiles starting at ")]
     DistinctOverflow(Coords),
 
     /// The requested tile position is out of the image
-    #[error("Requested tile position {0} is out of bound")]
+    #[error("Requested tile position  is out of bound")]
     OutOfBound(Coords),
 
     /// The given index is out of the boundaries of the target tileset

@@ -625,16 +625,16 @@ impl<Bg: GetTileFlip, Fg: GetTileFlip> GetTileFlip for BgFg<Bg, Fg> {
 /// Non-configurable tile size and mode.
 /// Used for hardware which only supports one type of tile.
 #[derive(Debug, Default, Clone, Copy)]
-pub struct Const<const FLIP: bool = true, const SIZE: u32 = 8>;
+pub struct Const<const FLIP: bool = true, const SIZE: usize = 8>;
 
-impl<const FLIP: bool, const SIZE: u32> GetTileSize for Const<FLIP, SIZE> {
+impl<const FLIP: bool, const SIZE: usize> GetTileSize for Const<FLIP, SIZE> {
     #[inline]
     fn tile_size(&self) -> TileSize {
         TileSize::new(SIZE, SIZE)
     }
 }
 
-impl<const FLIP: bool, const SIZE: u32> GetTileFlip for Const<FLIP, SIZE> {
+impl<const FLIP: bool, const SIZE: usize> GetTileFlip for Const<FLIP, SIZE> {
     #[inline]
     fn tile_flip(&self) -> Flip {
         if FLIP { Flip::Both } else { Flip::None }

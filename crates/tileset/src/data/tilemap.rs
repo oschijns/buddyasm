@@ -47,12 +47,12 @@ impl TileData {
         flip: Flip,
         empty: bool,
     ) -> Self {
-        let [x, y] = coords.0;
+        let [position_x, position_y] = coords;
         Self {
             tile_index: tile_index as u16,
             palette_index: palette_index as u16,
-            position_x: x as u16,
-            position_y: y as u16,
+            position_x,
+            position_y,
             flip,
             empty,
         }
