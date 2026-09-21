@@ -60,39 +60,24 @@ impl Builder {
         dims: ImgTileDim,
         index: usize,
     ) -> Result<TileData, TileError> {
-        // Define the limits of the tile in pixels
-        let coords = dims.index_to_coords_16(index);
-
         // Extract a sub part of the image
         let [px, py, sx, sy] = dims.index_to_img_view(index);
         let sub_img = img.view(px, py, sx, sy);
 
         // Try to convert the sub portion of the image into a tile
-        let (palette_index, empty_tile, tile) = pal.identify_tile(&sub_img.to_image())?;
+        let (palette_index, tile) = pal.identify_tile(&sub_img.to_image())?;
 
         // We identified a tile with the corresponding palette.
         // Now we need to check if said tile already exists in the set.
         if let Some(&(tile_index, flip)) = self.tile_to_index.get(&tile) {
             // The tile already exists in the set,
             // store the corresponding index in the index map.
-            Ok(TileData::new(
-                tile_index,
-                palette_index,
-                coords,
-                flip,
-                empty_tile,
-            ))
+            Ok(TileData::new(tile_index, palette_index, flip))
         } else if let Some((tile_index, _)) = self.vacancy.iter().find_position(|&&vacant| vacant) {
             // If we cannot find a matching tile in the set,
             // add the new tile to the set at the first available slot.
             self.set_tile(tile_index, tile);
-            Ok(TileData::new(
-                tile_index,
-                palette_index,
-                coords,
-                Flip::None,
-                empty_tile,
-            ))
+            Ok(TileData::new(tile_index, palette_index, Flip::None))
         } else {
             // We tried to store the new tile in the set, but there are no more room.
             Err(TileError::DistinctOverflow)
@@ -155,7 +140,7 @@ impl Builder {
         let sub_img = img.view(px, py, sx, sy);
 
         // Try to convert the sub portion of the image into a tile
-        let (_, _, tile) = pal.identify_tile(&sub_img.to_image())?;
+        let (_, tile) = pal.identify_tile(&sub_img.to_image())?;
 
         // We identified the tile with it's corresponding palette.
         // Now we can store the tile at the requested index.

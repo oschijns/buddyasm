@@ -1,11 +1,50 @@
 use super::*;
-use crate::{data::palette::Palette, input_stack::Aseprite, output_stack::OutError};
+use crate::{
+    data::{palette::Palette, tilemap::TileMap},
+    input_stack::Aseprite,
+    output_stack::OutError,
+};
 use aseprite_loader::loader::{AsepriteFile, LayerSelection, LoadImageError, Tag};
 use image::{Rgba, RgbaImage};
 use itertools::Itertools;
 use regex::Regex;
 use std::{str::FromStr, sync::LazyLock};
 use strum::ParseError;
+
+/*
+ * TODO:
+ * Introduce a enum to store animation sequences
+ * Use an enum so that we can describe a sequence as
+ * - a single array
+ * - two arrays (flip horizontally)
+ * - four arrays (flip horizontally and vertically)
+ */
+
+/// Animation sequence
+#[derive(Debug, PartialEq, Clone)]
+pub enum AnimSequence {
+    /// Simple sequence
+    Single(Vec<AnimFrame>),
+
+    /// Sequence flipped horizontally
+    FlipH(Vec<[AnimFrame; 2]>),
+
+    /// Sequence flipped vertically
+    FlipV(Vec<[AnimFrame; 2]>),
+
+    /// Sequence flipped horizontally and vertically
+    FlipBoth(Vec<[AnimFrame; 4]>),
+}
+
+/// Frame of an animation sequence
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct AnimFrame {
+    /// Index of the frame to use
+    frame_index: u16,
+
+    /// Duration of the frame
+    duration: u16,
+}
 
 impl Builder {
     /// Process an Aseprite file
@@ -77,40 +116,40 @@ impl Builder {
         todo!()
     }
 
-    // TODO:
-    // move the list of errors to the builder with proper identification of the location of the errors
-
     /// Process one animation sequence
     fn process_anim_sequence<'f>(
         &mut self,
         proc: &mut ProcessSequence<'f>,
         pal: &Palette,
         tag: &Tag,
-    ) -> Result<(), OutError> {
+    ) -> Result<Vec<[AnimFrame; 4]>, OutError> {
         // For now we will use the tag name to specify the `LR`, `UD` flags.
         let (name, flip) = extract_flip_flag(&tag.name)?;
 
-        // Allocate a buffer to store the frame as images
+        // Allocate buffers to store the animation sequences
         let count = tag.range.clone().count();
-        let mut frames = Vec::<()>::with_capacity(count);
+        let mut seq = Vec::with_capacity(count);
 
         // Iterate over the frames constituing this animation
         for i in tag.range.clone().into_iter() {
             // Convert the image data into an exploitable format
             proc.render_frame(i as usize)?;
             let frame_data = &proc.file.frames[i as usize];
+            let duration = frame_data.duration;
 
             // Process the image as an individual pixel art
-            match self.process(&proc.image, pal) {
-                Ok(tilemap) => {}
-                Err(errors) => {}
-            }
+            let tilemap = self.process(&proc.image, pal)?;
+            let frame_index = proc.identify_frame(tilemap) as u16;
+            let frame = AnimFrame {
+                frame_index,
+                duration,
+            };
 
             // Push the frame in the array
-            //frames.push((self.build_image(), frame_data.duration));
+            seq.push([frame, frame, frame, frame]);
         }
 
-        Ok(())
+        Ok(seq)
     }
 }
 
@@ -125,6 +164,9 @@ struct ProcessSequence<'f> {
 
     /// Image buffer to be passed to the builder for further processing
     image: RgbaImage,
+
+    /// Store individual frames to be identified by index
+    frames: Vec<TileMap>,
 }
 
 impl<'f> ProcessSequence<'f> {
@@ -144,6 +186,7 @@ impl<'f> ProcessSequence<'f> {
             file,
             write_buffer,
             image,
+            frames: Vec::new(),
         }
     }
 
@@ -168,6 +211,21 @@ impl<'f> ProcessSequence<'f> {
         }
 
         Ok(())
+    }
+
+    /// Look into the already generated frame for a matching one.
+    /// If none is matching, insert the new frame at the tail of the list.
+    /// Return the index corresponding to the frame.
+    fn identify_frame(&mut self, frame: TileMap) -> usize {
+        // Look for a pre-existing instance of the frame
+        if let Some(index) = self.frames.iter().position(|f| *f == frame) {
+            index
+        } else {
+            // Otherwise insert the new frame in the stack
+            let index = self.frames.len();
+            self.frames.push(frame);
+            index
+        }
     }
 }
 

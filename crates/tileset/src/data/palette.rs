@@ -43,16 +43,12 @@ impl Palette {
     /// Check the content of the provided sub image to try to deduce a palette
     /// index and an encoding of the tile. If no palette defined in this set
     /// matches the provided image, return an error.
-    pub fn identify_tile(
-        &self,
-        img: &RgbaImage,
-    ) -> Result<(usize, bool, Tile), NoPaletteMatchError> {
+    pub fn identify_tile(&self, img: &RgbaImage) -> Result<(usize, Tile), NoPaletteMatchError> {
         // Figure out the dimensions of the input image
         let (w, h) = img.dimensions();
 
         // Create a tile to store the result
         let mut tile = Array2::zeros(to_index(w, h));
-        let mut pixel_set = false;
 
         // Try each palette successively
         'pal: for (i, palette) in self.0.columns().into_iter().enumerate() {
@@ -64,7 +60,6 @@ impl Palette {
                     if *pixel == *color {
                         // Store the corresponding index in the tile we are making
                         tile[to_index(x, y)] = j as Pix;
-                        pixel_set = true;
 
                         // We can move on to the next pixel
                         continue 'pix;
@@ -78,7 +73,7 @@ impl Palette {
 
             // We have filled the tile with indexes
             // the palette we used is a full match.
-            return Ok((i, !pixel_set, Tile::new(tile)));
+            return Ok((i, Tile::new(tile)));
         }
 
         // We've look into each color of the palette selected but could

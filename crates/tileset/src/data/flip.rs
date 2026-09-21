@@ -4,20 +4,18 @@ use serde::{Deserialize, Serialize};
 
 /// Flipping axes
 #[repr(u8)]
+#[rustfmt::skip]
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Flip {
     /// No flip
     #[default]
-    None = 0b00,
-
+    None       = 0b00,
     /// Horizontal flip
     Horizontal = 0b01,
-
     /// Vertical flip
-    Vertical = 0b10,
-
+    Vertical   = 0b10,
     /// Flip horizontally and vertically
-    Both = 0b11,
+    Both       = 0b11,
 }
 
 impl Flip {
@@ -31,6 +29,42 @@ impl Flip {
     #[inline]
     pub const fn vertical(self) -> bool {
         matches!(self, Self::Vertical | Self::Both)
+    }
+
+    /// Flip horizontally
+    #[inline]
+    #[rustfmt::skip]
+    pub fn flip_h(self) -> Self {
+        match self {
+            Self::None       => Self::Horizontal,
+            Self::Horizontal => Self::None,
+            Self::Vertical   => Self::Both,
+            Self::Both       => Self::Vertical,
+        }
+    }
+
+    /// Flip  vertically
+    #[inline]
+    #[rustfmt::skip]
+    pub fn flip_v(self) -> Self {
+        match self {
+            Self::None       => Self::Vertical,
+            Self::Horizontal => Self::Both,
+            Self::Vertical   => Self::None,
+            Self::Both       => Self::Horizontal,
+        }
+    }
+
+    /// Flip  both horizontally and vertically
+    #[inline]
+    #[rustfmt::skip]
+    pub fn flip_both(self) -> Self {
+        match self {
+            Self::None       => Self::Both,
+            Self::Horizontal => Self::Vertical,
+            Self::Vertical   => Self::Horizontal,
+            Self::Both       => Self::None,
+        }
     }
 }
 

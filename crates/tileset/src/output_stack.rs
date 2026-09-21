@@ -81,6 +81,15 @@ pub struct OutTile {
     /// Tile data encoded for the target system
     #[serde(flatten)]
     pub encoded: EncodedTile,
+
+    /// Position of the tile (in tiles)
+    pub position_x: u16,
+
+    /// Position of the tile (in tiles)
+    pub position_y: u16,
+
+    /// Indicate if the tile is actually empty
+    pub empty: bool,
 }
 
 /// Encoded tile for the target system
