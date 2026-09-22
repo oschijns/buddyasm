@@ -2,7 +2,10 @@ use super::*;
 use crate::{
     data::{palette::Palette, tilemap::TileMap},
     input_stack::Aseprite,
-    output_stack::OutError,
+    output_stack::{
+        OutError,
+        animation::{AnimFrame, AnimSequence},
+    },
 };
 use aseprite_loader::loader::{AsepriteFile, LayerSelection, LoadImageError, Tag};
 use image::{Rgba, RgbaImage};
@@ -11,150 +14,138 @@ use regex::Regex;
 use std::{str::FromStr, sync::LazyLock};
 use strum::ParseError;
 
-/*
- * TODO:
- * Introduce a enum to store animation sequences
- * Use an enum so that we can describe a sequence as
- * - a single array
- * - two arrays (flip horizontally)
- * - four arrays (flip horizontally and vertically)
- */
-
-/// Animation sequence
-#[derive(Debug, PartialEq, Clone)]
-pub enum AnimSequence {
-    /// Simple sequence
-    Single(Vec<AnimFrame>),
-
-    /// Sequence flipped horizontally
-    FlipH(Vec<[AnimFrame; 2]>),
-
-    /// Sequence flipped vertically
-    FlipV(Vec<[AnimFrame; 2]>),
-
-    /// Sequence flipped horizontally and vertically
-    FlipBoth(Vec<[AnimFrame; 4]>),
-}
-
-/// Frame of an animation sequence
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct AnimFrame {
-    /// Index of the frame to use
-    frame_index: u16,
-
-    /// Duration of the frame
-    duration: u16,
-}
-
 impl Builder {
     /// Process an Aseprite file
     pub(super) fn process_animations(
         &mut self,
         aseprite: &Aseprite,
-        pal: &Palette,
-    ) -> Result<(), Vec<OutError>> {
-        // Push errors into this list
-        let mut errors = Vec::<OutError>::new();
-
+        palette: &Palette,
+    ) -> Result<(BTreeMap<String, AnimSequence>, Vec<TileMap>), OutError> {
+        // Access the Aseprite file
         let file = aseprite.file();
-        let mut proc = ProcessSequence::new(file);
+
+        // Allocate a workarea to process sequences of animation
+        let mut work_area = WorkArea::new(file);
+        // Create a map to store the animation with their frame indexes
+        let mut out = BTreeMap::new();
+
+        // Iterate over the tagged animations
         for tag in file.tags() {
-            match self.process_anim_sequence(&mut proc, pal, tag) {
-                Ok(ok) => {}
-                Err(err) => {
-                    errors.push(err);
-                    continue;
-                }
-            }
+            let (name, seq) = self.process_anim_sequence(&mut work_area, palette, tag)?;
+            out.insert(name, seq);
         }
 
-        /* Iterate over the tags in the file
-        for tag in file.tags() {
-            // For now we will use the tag name to specify the `LR`, `UD` flags.
-            let (name, flip) = match extract_flip_flag(&tag.name) {
-                Ok(ok) => ok,
-                Err(err) => {
-                    errors.push(OutError::ParseFlipFlag(err));
-                    continue;
-                }
-            };
-
-            // Iterate over the frames constituing this animation
-            for i in tag.range.clone().into_iter() {
-                // Render the frame to the buffer
-                // Pixels are written in RGBA8 format
-                if let Err(err) =
-                    file.render_frame(i as usize, &mut buffer, &LayerSelection::Visible)
-                {
-                    errors.push(value);
-                }
-                let frame = &file.frames[i as usize];
-
-                // TODO: the following is not necessary ???
-                let (fx, fy) = frame.origin;
-
-                // Iterate over the cels in the frame
-                for cel in frame.cels.iter() {
-                    let (cx, cy) = cel.origin;
-                    let (cw, ch) = cel.size;
-
-                    // From the cel, we can find the image to use
-                    let image = &file.images[cel.image_index];
-                    let layer = &file.layers[cel.layer_index];
-
-                    // We use the layer to data to figure out if it is visible or not
-                    if layer.visible {
-                        let x = fx + cx;
-                        let y = fy + cy;
-
-                        //let sub_img = image.data
-                    }
-                }
-            }
-        } // */
-
-        todo!()
+        // Return the animation sequences and the frames
+        Ok((out, work_area.frames))
     }
 
     /// Process one animation sequence
     fn process_anim_sequence<'f>(
         &mut self,
-        proc: &mut ProcessSequence<'f>,
-        pal: &Palette,
+        work_area: &mut WorkArea<'f>,
+        palette: &Palette,
         tag: &Tag,
-    ) -> Result<Vec<[AnimFrame; 4]>, OutError> {
+    ) -> Result<(String, AnimSequence), OutError> {
         // For now we will use the tag name to specify the `LR`, `UD` flags.
         let (name, flip) = extract_flip_flag(&tag.name)?;
 
         // Allocate buffers to store the animation sequences
         let count = tag.range.clone().count();
-        let mut seq = Vec::with_capacity(count);
 
-        // Iterate over the frames constituing this animation
-        for i in tag.range.clone().into_iter() {
-            // Convert the image data into an exploitable format
-            proc.render_frame(i as usize)?;
-            let frame_data = &proc.file.frames[i as usize];
-            let duration = frame_data.duration;
+        let seq = match flip {
+            FlipFlag::None => {
+                let mut seq = Vec::with_capacity(count);
 
-            // Process the image as an individual pixel art
-            let tilemap = self.process(&proc.image, pal)?;
-            let frame_index = proc.identify_frame(tilemap) as u16;
-            let frame = AnimFrame {
-                frame_index,
-                duration,
-            };
+                // Iterate over the frames in this animation
+                for i in tag.range.clone().into_iter() {
+                    // Convert the image data into an exploitable format
+                    work_area.render_frame(i as usize)?;
+                    let frame_data = &work_area.file.frames[i as usize];
 
-            // Push the frame in the array
-            seq.push([frame, frame, frame, frame]);
-        }
+                    // Process the image as an individual pixel art
+                    let tilemap = self.process(&work_area.image, palette)?;
+                    let index = work_area.identify_frame(tilemap);
 
-        Ok(seq)
+                    // Push the frame in the array
+                    seq.push(AnimFrame::new0(index, frame_data.duration));
+                }
+                AnimSequence::Single(seq)
+            }
+            FlipFlag::LeftRight => {
+                let mut seq = Vec::with_capacity(count);
+
+                // Iterate over the frames in this animation
+                for i in tag.range.clone().into_iter() {
+                    // Convert the image data into an exploitable format
+                    work_area.render_frame(i as usize)?;
+                    let frame_data = &work_area.file.frames[i as usize];
+
+                    // Process the image as an individual pixel art
+                    let tilemap = self.process(&work_area.image, palette)?;
+                    let index_n = work_area.identify_frame(tilemap.clone());
+                    let index_h = work_area.identify_frame(tilemap.flip_h());
+
+                    // Push the frame in the array
+                    seq.push(AnimFrame::new1(index_n, index_h, frame_data.duration));
+                }
+                AnimSequence::FlipH(seq)
+            }
+            FlipFlag::UpDown => {
+                let mut seq = Vec::with_capacity(count);
+
+                // Iterate over the frames in this animation
+                for i in tag.range.clone().into_iter() {
+                    // Convert the image data into an exploitable format
+                    work_area.render_frame(i as usize)?;
+                    let frame_data = &work_area.file.frames[i as usize];
+
+                    // Process the image as an individual pixel art
+                    let tilemap = self.process(&work_area.image, palette)?;
+                    let index_n = work_area.identify_frame(tilemap.clone());
+                    let index_v = work_area.identify_frame(tilemap.flip_v());
+
+                    // Push the frame in the array
+                    seq.push(AnimFrame::new1(index_n, index_v, frame_data.duration));
+                }
+                AnimSequence::FlipV(seq)
+            }
+            FlipFlag::All => {
+                let mut seq = Vec::with_capacity(count);
+
+                // Iterate over the frames in this animation
+                for i in tag.range.clone().into_iter() {
+                    // Convert the image data into an exploitable format
+                    work_area.render_frame(i as usize)?;
+                    let frame_data = &work_area.file.frames[i as usize];
+
+                    // Process the image as an individual pixel art
+                    let tilemap = self.process(&work_area.image, palette)?;
+                    let index_n = work_area.identify_frame(tilemap.clone());
+                    let index_h = work_area.identify_frame(tilemap.flip_h());
+                    let index_v = work_area.identify_frame(tilemap.flip_v());
+                    let index_b = work_area.identify_frame(tilemap.flip_both());
+
+                    // Push the frame in the array
+                    seq.push(AnimFrame::new2(
+                        index_n,
+                        index_h,
+                        index_v,
+                        index_b,
+                        frame_data.duration,
+                    ));
+                }
+                AnimSequence::FlipBoth(seq)
+            }
+        };
+
+        Ok((name, seq))
     }
 }
 
+// MARK: Work area for animation sequence
+
 /// Data structure for processing an animation sequence defined by a tag.
-struct ProcessSequence<'f> {
+struct WorkArea<'f> {
     /// Parsed aseprite file
     file: &'f AsepriteFile<'f>,
 
@@ -169,7 +160,7 @@ struct ProcessSequence<'f> {
     frames: Vec<TileMap>,
 }
 
-impl<'f> ProcessSequence<'f> {
+impl<'f> WorkArea<'f> {
     /// Create a context for processing animations
     fn new(file: &'f AsepriteFile<'f>) -> Self {
         let (width, height) = file.size();

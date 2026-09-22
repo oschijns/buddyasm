@@ -12,7 +12,9 @@ use crate::{
         tileset::{Tile, TileSet},
     },
     input_stack::{InputConfig, InputEntry, InputImage, InputStack},
-    output_stack::{OutError, OutputEntry, OutputImage, OutputStack, OutputStackError},
+    output_stack::{
+        OutError, OutputEntry, OutputImage, OutputStack, OutputStackError, animation::AnimationSet,
+    },
     process::encode::encode_tiles,
     profile::Profile,
 };
@@ -93,14 +95,13 @@ impl Builder {
     /// Store a given tile at the specified index in the tileset
     /// This method assume the tile is in its default orientation
     #[inline]
+    #[rustfmt::skip]
     fn set_tile(&mut self, index: usize, tile: Tile) {
         // Associate the index with the provided tile
         self.index_to_tile.insert(index, tile.clone());
 
         // Make it a bidirectional relationship
         self.tile_to_index.insert(tile.clone(), (index, Flip::None));
-
-        #[cfg_attr(cfg, rustfmt::skip)]
         match self.config.flip {
             Flip::None       => { /* nothing to do */ }
             Flip::Horizontal => { self.tile_to_index.insert(tile.flip_horizontal(), (index, Flip::Horizontal)); }
@@ -112,7 +113,6 @@ impl Builder {
                 self.tile_to_index.insert(tile.flip_both      (), (index, Flip::Both      ));
             }
         }
-
         // The slot is no longer vacant
         self.vacancy[index] = false;
     }
@@ -157,13 +157,8 @@ impl Builder {
             InputImage::Static(image) => {
                 let tile_map = self.process(&image.to_rgba8(), &entry.palette)?;
                 // Encode the tiles for the target system
-                let out_map = encode_tiles(profile, &tile_map);
-                Ok(Some(OutputEntry {
-                    name: entry.name.clone(),
-                    image: OutputImage::Static(out_map),
-                    output_json: entry.output_json,
-                    template: entry.template.clone(),
-                }))
+                let image = OutputImage::Static(encode_tiles(profile, &tile_map));
+                Ok(Some(OutputEntry::new(entry, image)))
             }
             // Input is a character set (or similar)
             InputImage::FixedPosition { image, mapping } => {
@@ -171,39 +166,12 @@ impl Builder {
                 Ok(None)
             }
             InputImage::Aseprite(aseprite) => {
-                /*
-                // Collect animations
-                let mut animations = Vec::with_capacity(aseprite.num_frames() as usize);
+                let (sequences, frames) = self.process_animations(aseprite, &entry.palette)?;
 
-                // TODO
-                // read animations metadata to associate actual animations with
-                // frames that have been processed.
-
-                // Iterate over all the frames defined in the Aseprite file
-                for i in 0..aseprite.num_frames() {
-                    let image = aseprite.frame(i).image();
-                    match builder.process(&image, &entry.palette) {
-                        Ok(tile_map) => {
-                            // Encode the tiles for the target system
-                            let out_map = encode_tiles(&input.profile, &tile_map);
-                            animations.push(out_map);
-                        }
-                        Err(err) => {
-                            errors.insert(entry.path.clone(), err);
-                            continue;
-                        }
-                    }
-                }
-
-                // Encode the tiles for the target system
-                out_entries.push(OutputEntry {
-                    name: entry.name.clone(),
-                    image: OutputImage::Animated(animations),
-                    output_json: entry.output_json,
-                    template: entry.template.clone(),
-                });
-                // */
-                todo!("Aseprite not yet supported")
+                // Convert the TileMaps into OutMaps
+                let frames = frames.iter().map(|f| encode_tiles(profile, f)).collect();
+                let image = OutputImage::Animated(AnimationSet { sequences, frames });
+                Ok(Some(OutputEntry::new(entry, image)))
             }
             InputImage::TiledTileset(tileset) => todo!("Tiled files not yet supported"),
             InputImage::TiledMap(map) => todo!("Tiled files not yet supported"),

@@ -1,5 +1,10 @@
-use crate::data::{
-    coords::Coords, palette::NoPaletteMatchError, tilemap::TileData, tileset::TileSet,
+/// Structure for generating animation sequence arrays
+pub mod animation;
+
+use crate::{
+    data::{coords::Coords, palette::NoPaletteMatchError, tilemap::TileData, tileset::TileSet},
+    input_stack::InputEntry,
+    output_stack::animation::AnimationSet,
 };
 use core::{error, fmt};
 use ndarray::Array2;
@@ -43,28 +48,7 @@ pub enum OutputImage {
     Static(OutMap),
 
     /// Output an animated image
-    Animated(OutAnimated),
-}
-
-/// Store the data to reconstruct an animated sprite
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OutAnimated {
-    /// Store the list of frames to be indexed to reconstruct the animation
-    frames: Vec<OutMap>,
-
-    /// Animation frames indexed
-    animations: BTreeMap<String, Vec<OutFrame>>,
-}
-
-/// Data related to a frame of an animation.
-/// This includes the index of the frame in the storage and the duration.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct OutFrame {
-    /// Index of the frame in the `frames` buffer
-    index: u16,
-
-    /// Duration of the frame in ticks
-    duration: u16,
+    Animated(AnimationSet),
 }
 
 /// Indexes map to reconstruct the pictural data
@@ -130,6 +114,19 @@ impl<'de> Deserialize<'de> for OutMap {
     {
         let data: Array2<OutTile> = serde::Deserialize::deserialize(deserializer)?;
         Ok(OutMap::new(data))
+    }
+}
+
+impl OutputEntry {
+    /// Create an output entry from the input data and the processed image
+    #[inline]
+    pub fn new(entry: &InputEntry, image: OutputImage) -> Self {
+        Self {
+            name: entry.name.clone(),
+            output_json: entry.output_json,
+            template: entry.template.clone(),
+            image,
+        }
     }
 }
 
