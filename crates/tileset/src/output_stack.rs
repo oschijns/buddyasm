@@ -156,7 +156,7 @@ impl error::Error for OutputStackError {}
 #[derive(thiserror::Error, Debug)]
 pub enum OutError {
     /// If no palette match the given tile
-    #[error("No matching palette for tile at ")]
+    #[error("Tiles: {0}")]
     Tiles(#[from] TilesError),
 
     /// Could not identify the flipping flag from an animated sprite
@@ -169,8 +169,17 @@ pub enum OutError {
 
 /// List of errors when processing the tiles
 #[derive(thiserror::Error, Debug)]
-#[error("Errors when processing tiles")]
 pub struct TilesError(pub Vec<(Coords, TileError)>);
+
+impl fmt::Display for TilesError {
+    /// Display the list of errors
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for ([x, y], error) in self.0.iter() {
+            writeln!(f, "({:>3}, {:>3}): {}", x, y, error)?;
+        }
+        Ok(())
+    }
+}
 
 /// Error encountered when processing tile
 #[repr(u8)]
