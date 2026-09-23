@@ -1,5 +1,10 @@
 # BuddyASM
 
+# Serialize Para
+test-para:
+	mkdir -p output/para
+	cargo run --package buddyasm_tileset --features "binary" -- --manifest crates/tileset/assets/manifest-para.toml
+
 # Test animated sprite
 test-anim:
     mkdir -p output/anim

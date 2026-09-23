@@ -1,0 +1,35 @@
+
+[config]
+
+# Target hardware
+system = "famicom"
+
+# Background or Foreground tileset
+kind = "bg"
+
+# Bitplane layout
+bit_plane = "bpp2"
+
+# Default palette to use for processing the spritework
+default_palette = "palette-para.png"
+
+# Where to output the processed tileset
+output = "../../../output/para"
+
+
+
+
+[[entry]]
+
+# Optional name for the entry
+name = "Para"
+
+# Load a sprite work
+image = "para.png"
+
+# Use a custom palette
+palette = "palette-para.png"
+
+# Should we output the index data in JSON format
+# Only applicable for static and animated spritework entries
+output_json = true
