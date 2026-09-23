@@ -262,7 +262,7 @@ pub enum FlipFlag {
 
 /// Regex for extracting the flip flag from a tag name
 static REGEX_FLIP: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(\w)+(\.([A-Za-z_\-\*]+)?)").unwrap());
+    LazyLock::new(|| Regex::new(r"(\w+)(\.([A-Za-z_\-\*]+)?)").unwrap());
 
 /// Parse the given tag name to extract flip flag
 fn extract_flip_flag(tag_name: &str) -> Result<(String, FlipFlag), ParseError> {

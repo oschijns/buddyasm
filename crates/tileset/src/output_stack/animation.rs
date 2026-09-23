@@ -14,17 +14,22 @@ pub struct AnimationSet {
 
 /// Animation sequence
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", content = "indexes")]
 pub enum AnimSequence {
     /// Simple sequence
+    #[serde(rename = "default")]
     Single(Vec<AnimFrame>),
 
     /// Sequence flipped horizontally
+    #[serde(rename = "left-right")]
     FlipH(Vec<AnimFrame<Flip1>>),
 
     /// Sequence flipped vertically
+    #[serde(rename = "up-down")]
     FlipV(Vec<AnimFrame<Flip1>>),
 
     /// Sequence flipped horizontally and vertically
+    #[serde(rename = "all")]
     FlipBoth(Vec<AnimFrame<Flip2>>),
 }
 
@@ -52,7 +57,7 @@ pub struct Flip1 {
     pub index: u16,
 
     /// Index for flipped frame
-    pub infex_flipped: u16,
+    pub index_flipped: u16,
 }
 
 /// Four indexes (horizontal and vertical flipping)
@@ -89,7 +94,7 @@ impl AnimFrame<Flip1> {
         Self {
             frame_indexes: Flip1 {
                 index: index as u16,
-                infex_flipped: index_flipped as u16,
+                index_flipped: index_flipped as u16,
             },
             duration,
         }
