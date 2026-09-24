@@ -34,6 +34,9 @@ palette = "palette.png"
 # Only applicable for static and animated spritework entries
 output_json = true
 
+# Which template file to use for rendering
+template = "template.asm"
+
 
 #[[entry]]
 

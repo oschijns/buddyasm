@@ -9,7 +9,7 @@
 
 #include "std/mod.asm"
 #include "debug.asm"
-
+#include "../output/para.asm"
 
 ; Setup the three main entry points of the program
 #bank vectors
@@ -76,20 +76,13 @@ program_start:
         sta ppu_address
 
         ldy #0
-
-        .fill_rows:
-            ldx #0
-
-        .fill_row:
-            txa
+        .fill_nametable:
+            lda artwork.indexes, y
             sta ppu_data
-            inx
-            cpx #32
-            bne .fill_row
 
             iny
-            cpy #30
-            bne .fill_rows
+            cpy #artwork.indexes.len
+            bne .fill_nametable
     ;</fill>
 
     ; enable rendering
