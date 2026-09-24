@@ -1,0 +1,16 @@
+
+
+# Generate the tileset
+tileset:
+    mkdir -p output
+    cargo run --package buddyasm_tileset --features "binary" -- --manifest manifest.toml
+
+
+# Create the ROM
+build:
+    customasm src/main.asm -o output/para.nes
+
+
+# Run the ROM
+run:
+    ares --system "Famicom" output/para.nes

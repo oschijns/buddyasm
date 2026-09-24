@@ -11,10 +11,10 @@ kind = "bg"
 bit_plane = "bpp2"
 
 # Default palette to use for processing the spritework
-default_palette = "palette-para.png"
+default_palette = "palette.png"
 
 # Where to output the processed tileset
-output = "../../../output/para"
+output = "output"
 
 
 
@@ -22,14 +22,23 @@ output = "../../../output/para"
 [[entry]]
 
 # Optional name for the entry
-name = "Para"
+name = "para"
 
 # Load a sprite work
 image = "para.png"
 
 # Use a custom palette
-palette = "palette-para.png"
+palette = "palette.png"
 
 # Should we output the index data in JSON format
 # Only applicable for static and animated spritework entries
 output_json = true
+
+
+#[[entry]]
+
+# Load a font file
+#image = "font.png"
+
+# Pick all printable ASCII characters and place them at the expected location for ASCII characters
+#fixed_mapping = [{ start = 0x20, end = 0x7F, target = 0x20 }]

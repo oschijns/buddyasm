@@ -1,0 +1,16 @@
+thread 'main' (36010) panicked at crates/tileset/src/data/palette.rs:83:9:
+[[4278190080, 4279445614, 4283058881, 4294967295],
+ [4278190080, 4281318863, 4287752676, 4294967295],
+ [4278190080, 4283213660, 4281718572, 4294967295],
+ [4278190080, 4286018090, 4293758535, 4294967295]], shape=[4, 4], strides=[4, 1], layout=Cc (0x5), const ndim=2
+
+[ ff000000, ff000000, ff000000, ff000000, ]
+[ ff13286e, ff2fbdcf, ff4ca75c, ff77722a, ]
+[ ff4a4ac1, ff91e9e4, ff35d72c, ffed8e47, ]
+[ ffffffff, ffffffff, ffffffff, ffffffff, ]
+
+
+[ ff000000, ff13286e, ff4a4ac1, ffffffff, ]
+[ ff000000, ff2fbdcf, ff91e9e4, ffffffff, ]
+[ ff000000, ff4ca75c, ff35d72c, ffffffff, ]
+[ ff000000, ff77722a, ffed8e47, ffffffff, ]
