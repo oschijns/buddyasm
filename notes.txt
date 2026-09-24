@@ -1,18 +1,20 @@
-List of dependencies that could be used
+TODO:
 
-fixed = "1.29"
-bitvec = "1.0"
-bitfield = "0.19"
-bytemuck = "1.24"
-simba = "0.9"
-regex = "1.12"
+tile data are serialized columns by columns
+we ant the opposite: rows by rows
 
-clap
-toml
-serde
-config
 
-view().permuted_axes([1, 0])
+We want Palette to store a smarter data struct that identify colors that are similar in a proximity
+That way the palette can be slightly off and still work
+
+We could use a voronoid 3D space ?
+Or a simpler approach ?
+
+We want to be able to encode palette directly in the TOML so that we do not need to carry a extra image file
+
+We want to fix the "empty" flag for empty blank tiles
+
+
 
 PC-Engine sprites:
 // https://www.chibiakumas.com/6502/platform4.php#LessonP33
