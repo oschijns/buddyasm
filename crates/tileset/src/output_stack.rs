@@ -101,7 +101,7 @@ impl Serialize for OutMap {
     where
         S: serde::Serializer,
     {
-        self.0.as_ref().serialize(serializer)
+        self.0.as_ref().t().serialize(serializer)
     }
 }
 
@@ -112,7 +112,8 @@ impl<'de> Deserialize<'de> for OutMap {
     where
         D: serde::Deserializer<'de>,
     {
-        let data: Array2<OutTile> = serde::Deserialize::deserialize(deserializer)?;
+        let mut data: Array2<OutTile> = serde::Deserialize::deserialize(deserializer)?;
+        data.permute_axes([1, 0]);
         Ok(OutMap::new(data))
     }
 }
