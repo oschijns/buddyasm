@@ -1,49 +1,48 @@
 use crate::data::flip::Flip;
-use ndarray::{Array2, Axis};
+use ndarray::{ArcArray2, Array2, Axis};
 use serde::{Deserialize, Serialize};
-use std::rc::Rc;
 
 /// Indexes map to reconstruct the pictural data
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TileMap(pub Rc<Array2<TileData>>);
+pub struct TileMap(pub ArcArray2<TileData>);
 
 impl TileMap {
     /// Create a new index map
     #[inline]
     pub fn new(data: Array2<TileData>) -> Self {
-        Self(Rc::new(data))
+        Self(ArcArray2::from(data))
     }
 
     /// Flip the tile map horizontally
     pub fn flip_h(&self) -> Self {
         // Clone the matrix, flip it along the X-axis
-        let mut out_map = self.0.as_ref().clone();
+        let mut out_map = self.0.to_owned();
         out_map.invert_axis(Axis(0));
 
         // Adjust the flipping attribute of each tile
         for tile in out_map.iter_mut() {
             tile.flip = tile.flip.flip_h();
         }
-        Self(Rc::new(out_map))
+        Self(ArcArray2::from(out_map))
     }
 
     /// Flip the tile map vertically
     pub fn flip_v(&self) -> Self {
         // Clone the matrix, flip it along the X-axis
-        let mut out_map = self.0.as_ref().clone();
+        let mut out_map = self.0.to_owned();
         out_map.invert_axis(Axis(1));
 
         // Adjust the flipping attribute of each tile
         for tile in out_map.iter_mut() {
             tile.flip = tile.flip.flip_v();
         }
-        Self(Rc::new(out_map))
+        Self(ArcArray2::from(out_map))
     }
 
     /// Flip the tile map both horizontally and vertically
     pub fn flip_both(&self) -> Self {
         // Clone the matrix, flip it along the X-axis
-        let mut out_map = self.0.as_ref().clone();
+        let mut out_map = self.0.to_owned();
         out_map.invert_axis(Axis(0));
         out_map.invert_axis(Axis(1));
 
@@ -51,7 +50,7 @@ impl TileMap {
         for tile in out_map.iter_mut() {
             tile.flip = tile.flip.flip_both();
         }
-        Self(Rc::new(out_map))
+        Self(ArcArray2::from(out_map))
     }
 }
 

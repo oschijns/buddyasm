@@ -2,13 +2,12 @@
 
 use crate::data::tileset::{Pix, Tile};
 use image::{ImageResult, Rgba, RgbaImage};
-use ndarray::{Array2, Ix, Ix2};
+use ndarray::{ArcArray2, Array2, Ix, Ix2};
 use std::path::Path;
-use std::rc::Rc;
 
 /// Set of palettes to look for in an input image
 #[derive(Debug, Clone)]
-pub struct Palette(pub(crate) Rc<Array2<Rgba<u8>>>);
+pub struct Palette(pub(crate) ArcArray2<Rgba<u8>>);
 
 /// Error encountered when trying to find a palette for a given tile
 #[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,7 +34,7 @@ impl Palette {
         }
 
         // Return the palette
-        Ok(Self(Rc::new(matrix)))
+        Ok(Self(ArcArray2::from(matrix)))
     }
 }
 

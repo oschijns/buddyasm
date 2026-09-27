@@ -4,17 +4,17 @@ use crate::{
     data::coords::{Coords, ImgTileDim},
     manifest::CharacterRange,
 };
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, sync::Arc};
 
 /// Enforce a fixed mapping between a tile position and a target index
 #[derive(Default, Debug, Clone)]
-pub struct CharacterMapping(pub(crate) Rc<HashMap<Coords, usize>>);
+pub struct CharacterMapping(pub(crate) Arc<HashMap<Coords, usize>>);
 
 impl CharacterMapping {
     /// Create a new mapping from a hashmap
     #[inline]
     pub fn new(data: HashMap<Coords, usize>) -> Self {
-        Self(Rc::new(data))
+        Self(Arc::new(data))
     }
 
     /// Create mapping from a list of ranges

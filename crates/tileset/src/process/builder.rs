@@ -182,5 +182,5 @@ impl Builder {
 /// Check if a tile only contains zeroes
 #[inline]
 pub fn is_empty_tile(tile: &Tile) -> bool {
-    tile.0.as_ref().iter().all(|&x| x == 0)
+    tile.0.iter().all(|&x| x == 0)
 }

@@ -2,25 +2,25 @@
 
 use crate::data::{coords::TileSize, flip::Flip};
 use core::hash::{Hash, Hasher};
-use ndarray::{Array2, Axis};
-use std::rc::Rc;
+use ndarray::{ArcArray2, Array2, Axis};
+use std::sync::Arc;
 
 /// Define a pixel in a tile
 pub type Pix = u8;
 
 /// Tile to serialize in a given binary layout
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct Tile(pub(crate) Rc<Array2<Pix>>);
+pub struct Tile(pub(crate) ArcArray2<Pix>);
 
 /// Tileset containing tiles
 #[derive(Debug, Clone)]
-pub struct TileSet(pub(crate) Rc<Vec<Tile>>);
+pub struct TileSet(pub(crate) Arc<Vec<Tile>>);
 
 impl TileSet {
     /// Create a new tileset from raw data
     #[inline]
     pub fn new(data: Vec<Tile>) -> Self {
-        Self(Rc::new(data))
+        Self(Arc::new(data))
     }
 
     /// Get the number of tiles in this tileset
@@ -48,44 +48,44 @@ impl Tile {
         // reorder pixels to be easier to serialize
         data.reverse_axes();
         data.invert_axis(Axis(1));
-        Self(Rc::new(data))
+        Self(ArcArray2::from(data))
     }
 
     /// Create a new empty tile
     #[inline]
     pub fn new_empty(tile_size: TileSize) -> Self {
-        Self(Rc::new(Array2::zeros(tile_size.ndarray_dim())))
+        Self(ArcArray2::zeros(tile_size.ndarray_dim()))
     }
 
     /// Get the number of pixels in this tile
     #[inline]
     pub fn pixel_count(&self) -> usize {
-        self.0.as_ref().len()
+        self.0.len()
     }
 
     /// Flip the tile horizontally
     #[inline]
     pub fn flip_horizontal(&self) -> Self {
-        let mut data = self.0.as_ref().clone();
+        let mut data = self.0.clone();
         data.invert_axis(Axis(0));
-        Self::new(data)
+        Self(data)
     }
 
     /// Flip the tile vertically
     #[inline]
     pub fn flip_vertical(&self) -> Self {
-        let mut data = self.0.as_ref().clone();
+        let mut data = self.0.clone();
         data.invert_axis(Axis(1));
-        Self::new(data)
+        Self(data)
     }
 
     /// Flip the tile both ways
     #[inline]
     pub fn flip_both(&self) -> Self {
-        let mut data = self.0.as_ref().clone();
+        let mut data = self.0.clone();
         data.invert_axis(Axis(0));
         data.invert_axis(Axis(1));
-        Self::new(data)
+        Self(data)
     }
 
     /// Flip the tile and build a new tile
@@ -100,25 +100,25 @@ impl Tile {
 
     /// Compare both tile to deduce if they are identical with possible flipping.
     pub fn similarity(&self, other: &Self, flip_h: bool, flip_v: bool) -> Option<Flip> {
-        let ref_tile = self.0.as_ref();
+        let ref_tile = &self.0;
 
         // Check if they are identical as is
-        if ref_tile == other.0.as_ref() {
+        if ref_tile == other.0 {
             return Some(Flip::None);
         }
 
         // Check if they are identical after a horizontal flip
-        if flip_h && ref_tile == other.flip_horizontal().0.as_ref() {
+        if flip_h && ref_tile == other.flip_horizontal().0 {
             return Some(Flip::Horizontal);
         }
 
         // Check if they are identical after a vertical flip
-        if flip_v && ref_tile == other.flip_vertical().0.as_ref() {
+        if flip_v && ref_tile == other.flip_vertical().0 {
             return Some(Flip::Vertical);
         }
 
         // Check if they are identical after horizontal and vertical flips
-        if flip_h && flip_v && ref_tile == other.flip_both().0.as_ref() {
+        if flip_h && flip_v && ref_tile == other.flip_both().0 {
             return Some(Flip::Both);
         }
 

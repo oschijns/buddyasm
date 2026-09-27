@@ -7,9 +7,9 @@ use crate::{
     output_stack::animation::AnimationSet,
 };
 use core::{error, fmt};
-use ndarray::Array2;
+use ndarray::{ArcArray2, Array2};
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, path::PathBuf, rc::Rc};
+use std::{collections::BTreeMap, path::PathBuf};
 
 /// TileSet generated and associated index maps
 #[derive(Debug)]
@@ -53,7 +53,7 @@ pub enum OutputImage {
 
 /// Indexes map to reconstruct the pictural data
 #[derive(Debug, Clone)]
-pub struct OutMap(pub Rc<Array2<OutTile>>);
+pub struct OutMap(pub ArcArray2<OutTile>);
 
 /// Indexes to reconstruct the pictural data
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -90,7 +90,7 @@ impl OutMap {
     /// Create a new index map
     #[inline]
     pub fn new(data: Array2<OutTile>) -> Self {
-        Self(Rc::new(data))
+        Self(ArcArray2::from(data))
     }
 }
 
@@ -101,7 +101,7 @@ impl Serialize for OutMap {
     where
         S: serde::Serializer,
     {
-        self.0.as_ref().t().serialize(serializer)
+        self.0.t().serialize(serializer)
     }
 }
 
