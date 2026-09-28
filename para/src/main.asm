@@ -9,7 +9,7 @@
 
 #include "std/mod.asm"
 #include "debug.asm"
-#include "../output/para.asm"
+#include "sample.asm"
 
 ; Setup the three main entry points of the program
 #bank vectors
@@ -69,20 +69,7 @@ program_start:
     jsr load_palette
 
     ;<fill>
-    ; PPU address = $2000
-        lda #0x20
-        sta ppu_address
-        lda #0x00
-        sta ppu_address
-
-        ldy #0
-        .fill_nametable:
-            lda artwork.indexes, y
-            sta ppu_data
-
-            iny
-            cpy #artwork.indexes.len
-            bne .fill_nametable
+    jsr DrawPicture
     ;</fill>
 
     ; enable rendering
@@ -156,6 +143,6 @@ palette:
     #d8 0x0d, 0x06, 0x16, 0x26 ; reds
     #d8 0x0d, 0x09, 0x19, 0x29 ; greens
     #d8 0x0d, 0x01, 0x12, 0x21 ; blues
-    #d8 0x0d, 0x06, 0x16, 0x26 ; reds
+    #d8 0x0d, 0x30, 0x11, 0x16 ; PARA
 
 .len = $ - palette

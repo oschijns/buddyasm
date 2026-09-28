@@ -4,6 +4,8 @@
 
 #bank consts
 artwork:
+    .WIDTH  = {{ dim[0] }}
+    .HEIGHT = {{ dim[1] }}
 
     .indexes:
 #d {% for tile in data -%}{{ tile.index | hex }}, {% endfor %}
