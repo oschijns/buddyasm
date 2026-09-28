@@ -9,6 +9,7 @@ pub mod animation;
 use crate::{
     data::{
         flip::Flip,
+        palette::{WorkBuffer, make_workbuffer},
         tileset::{Tile, TileSet},
     },
     input_stack::{InputConfig, InputEntry, InputImage, InputStack},
@@ -74,6 +75,9 @@ struct Builder {
 
     /// Keep track of the slots that are still vacant
     vacancy: Vec<bool>,
+
+    /// Work buffer for identifying color indexes
+    workbuffer: WorkBuffer,
 }
 
 impl Builder {
@@ -89,6 +93,7 @@ impl Builder {
             index_to_tile: HashMap::with_capacity(capacity),
             tile_to_index: HashMap::with_capacity(capacity),
             vacancy,
+            workbuffer: make_workbuffer(config.tile_size),
         }
     }
 

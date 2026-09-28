@@ -65,7 +65,7 @@ impl Builder {
         let sub_img = img.view(px, py, sx, sy);
 
         // Try to convert the sub portion of the image into a tile
-        let (palette_index, tile) = pal.identify_tile(&sub_img.to_image())?;
+        let (palette_index, tile) = pal.identify_tile(&sub_img.to_image(), &mut self.workbuffer)?;
 
         // We identified a tile with the corresponding palette.
         // Now we need to check if said tile already exists in the set.
@@ -141,7 +141,7 @@ impl Builder {
         let sub_img = img.view(px, py, sx, sy);
 
         // Try to convert the sub portion of the image into a tile
-        let (_, tile) = pal.identify_tile(&sub_img.to_image())?;
+        let (_, tile) = pal.identify_tile(&sub_img.to_image(), &mut self.workbuffer)?;
 
         // We identified the tile with it's corresponding palette.
         // Now we can store the tile at the requested index.

@@ -2,7 +2,7 @@
 pub mod animation;
 
 use crate::{
-    data::{coords::Coords, palette::NoPaletteMatchError, tilemap::TileData, tileset::TileSet},
+    data::{coords::Coords, palette::PaletteError, tilemap::TileData, tileset::TileSet},
     input_stack::InputEntry,
     output_stack::animation::AnimationSet,
 };
@@ -187,8 +187,8 @@ impl fmt::Display for TilesError {
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 pub enum TileError {
     /// If no palette match the given tile
-    #[error("No matching palette")]
-    NoPaletteMatch(#[from] NoPaletteMatchError),
+    #[error("Error using the palette")]
+    Palette(#[from] PaletteError),
 
     /// There are too many different tiles in the provided image
     #[error("Too many distinct tiles")]
