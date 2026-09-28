@@ -19,7 +19,7 @@ impl Builder {
     pub(super) fn process_animations(
         &mut self,
         aseprite: &Aseprite,
-        palette: &Palette,
+        mut palette: Palette,
     ) -> Result<(BTreeMap<String, AnimSequence>, Vec<TileMap>), OutError> {
         // Access the Aseprite file
         let file = aseprite.file();
@@ -31,7 +31,7 @@ impl Builder {
 
         // Iterate over the tagged animations
         for tag in file.tags() {
-            let (name, seq) = self.process_anim_sequence(&mut work_area, palette, tag)?;
+            let (name, seq) = self.process_anim_sequence(&mut work_area, &mut palette, tag)?;
             out.insert(name, seq);
         }
 
@@ -43,7 +43,7 @@ impl Builder {
     fn process_anim_sequence<'f>(
         &mut self,
         work_area: &mut WorkArea<'f>,
-        palette: &Palette,
+        palette: &mut Palette,
         tag: &Tag,
     ) -> Result<(String, AnimSequence), OutError> {
         // For now we will use the tag name to specify the `LR`, `UD` flags.
@@ -63,7 +63,7 @@ impl Builder {
                     let frame_data = &work_area.file.frames[i as usize];
 
                     // Process the image as an individual pixel art
-                    let tilemap = self.process(&work_area.image, palette)?;
+                    let tilemap = self.process(&work_area.image, palette.clone())?;
                     let index = work_area.identify_frame(tilemap);
 
                     // Push the frame in the array
@@ -81,7 +81,7 @@ impl Builder {
                     let frame_data = &work_area.file.frames[i as usize];
 
                     // Process the image as an individual pixel art
-                    let tilemap = self.process(&work_area.image, palette)?;
+                    let tilemap = self.process(&work_area.image, palette.clone())?;
                     let index_n = work_area.identify_frame(tilemap.clone());
                     let index_h = work_area.identify_frame(tilemap.flip_h());
 
@@ -100,7 +100,7 @@ impl Builder {
                     let frame_data = &work_area.file.frames[i as usize];
 
                     // Process the image as an individual pixel art
-                    let tilemap = self.process(&work_area.image, palette)?;
+                    let tilemap = self.process(&work_area.image, palette.clone())?;
                     let index_n = work_area.identify_frame(tilemap.clone());
                     let index_v = work_area.identify_frame(tilemap.flip_v());
 
@@ -119,7 +119,7 @@ impl Builder {
                     let frame_data = &work_area.file.frames[i as usize];
 
                     // Process the image as an individual pixel art
-                    let tilemap = self.process(&work_area.image, palette)?;
+                    let tilemap = self.process(&work_area.image, palette.clone())?;
                     let index_n = work_area.identify_frame(tilemap.clone());
                     let index_h = work_area.identify_frame(tilemap.flip_h());
                     let index_v = work_area.identify_frame(tilemap.flip_v());

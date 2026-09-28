@@ -1,27 +1,39 @@
 //! Palette
 
-use crate::data::tileset::{Pix, Tile};
-use image::{ImageResult, Pixel, Rgba, RgbaImage};
-use ndarray::{Array2, Array3, Ix, Ix2, Ix3};
-use std::collections::HashSet;
-use std::path::Path;
-use std::rc::Rc;
+use crate::data::{
+    coords::TileSize,
+    tileset::{Pix, Tile},
+};
+use image::{ImageResult, Pixel, Rgb, Rgba, RgbaImage};
+use ndarray::{Array2, Ix, Ix2};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+    hash::{BuildHasherDefault, Hash, Hasher},
+    path::Path,
+    rc::Rc,
+};
 
 /// Set of palettes to look for in an input image
 #[derive(Debug, Clone)]
-pub struct Palette(pub(crate) Rc<Inner>);
+pub struct Palette(Rc<RefCell<PaletteInner>>);
 
 /// Storage for the processed palette.
 #[derive(Debug)]
-pub(crate) struct Inner {
-    /// Lookup matrix to identify the closest color in the palette for each pixel.
-    /// This is based on a voronoid partitioning of the RGB color space.
-    /// Any color value with an alpha channel below a certain threshold is
-    /// considered transparent and assigned the index 0.
-    pub(crate) lookup: Array3<u8>,
+struct PaletteInner {
+    /// Set of unique colors extracted from the palette
+    colorset: Vec<(ColorHash, [i32; 3])>,
+
+    /// Store already identified mapping between RGB colors and corresponding index.
+    /// This map is initially filled with colors from the palette but may be completed
+    /// overtime if we encounter colors that are close but not perfect match.
+    lookup: HashMap<ColorHash, u8, BuildHasherDefault<ColorHasher>>,
 
     /// Palette definition where each RGBA color has been identified by a unique index.
-    pub(crate) palette: Array2<u8>,
+    palette: Array2<u8>,
+
+    /// Given a RGBA tile, identify the index of each pixel color
+    workbuffer: Array2<u8>,
 }
 
 /// Error encountered when trying to find a palette for a given tile
@@ -31,10 +43,10 @@ pub struct NoPaletteMatchError;
 
 impl Palette {
     /// Load a palette from a file
-    pub fn load_palette(path: &Path) -> ImageResult<Self> {
-        let matrix = Inner::load_palette_from_image(path)?;
-        let inner = Inner::matrix_to_palette(matrix);
-        Ok(Self(Rc::new(inner)))
+    pub fn load_palette(path: &Path, tile_size: TileSize) -> ImageResult<Self> {
+        let matrix = PaletteInner::load_palette_from_image(path)?;
+        let inner = PaletteInner::matrix_to_palette(matrix, tile_size.ndarray_dim());
+        Ok(Self(Rc::new(RefCell::new(inner))))
     }
 }
 
@@ -42,10 +54,9 @@ impl Palette {
     /// Check the content of the provided sub image to try to deduce a palette
     /// index and an encoding of the tile. If no palette defined in this set
     /// matches the provided image, return an error.
-    pub fn identify_tile(&self, img: &RgbaImage) -> Result<(usize, Tile), NoPaletteMatchError> {
-        let inner = self.0.as_ref();
-        let matrix = inner.identify_color_indexes(img);
-        match inner.find_matching_palette(&matrix) {
+    pub fn identify_tile(&mut self, img: &RgbaImage) -> Result<(usize, Tile), NoPaletteMatchError> {
+        self.0.borrow_mut().identify_color_indexes(img);
+        match self.0.borrow().find_matching_palette() {
             Ok((index, tile)) => Ok((index, Tile::new(tile))),
             Err(_) => Err(NoPaletteMatchError),
         }
@@ -56,7 +67,7 @@ impl Palette {
 /// this threshold, treating them as transparent.
 const ALPHA_THRESHOLD: u8 = 128;
 
-impl Inner {
+impl PaletteInner {
     /// Load a palette from an image file on disk.
     /// Returns a simple 2D matrix of RGBA colors.
     fn load_palette_from_image(path: &Path) -> ImageResult<Array2<Rgba<u8>>> {
@@ -81,7 +92,7 @@ impl Inner {
     }
 
     /// Convert a 2D matrix of RGBA colors into a usable palette.
-    fn matrix_to_palette(matrix: Array2<Rgba<u8>>) -> Self {
+    fn matrix_to_palette(matrix: Array2<Rgba<u8>>, tile_size: Ix2) -> Self {
         // Identify unique colors in the matrix
         let mut colorset = HashSet::with_capacity(matrix.len());
         for color in matrix.iter() {
@@ -93,49 +104,26 @@ impl Inner {
         // Assign a unique index to each color encountered by converting the color set into a list
         let colorset = colorset
             .into_iter()
-            .map(|rgb| {
-                let [r, g, b] = rgb.0;
-                let value = u32::from_ne_bytes([r, g, b, 0xFF]);
-                ([r as i32, g as i32, b as i32], value)
-            })
+            .map(|rgb| (ColorHash::from(rgb), to_vec(rgb)))
             .collect::<Vec<_>>();
 
         // Initialize the lookup table and fill it with color indexes
-        const DIM: usize = 0x100;
-        let mut lookup = Array3::zeros((DIM, DIM, DIM));
-        for ((r, g, b), out) in lookup.indexed_iter_mut() {
-            let r1 = r as i32;
-            let g1 = g as i32;
-            let b1 = b as i32;
-
-            // Find the index of the closest color in the color set.
-            let mut selected = (i32::MAX, u8::MAX);
-            for (i, ([r0, g0, b0], _)) in colorset.iter().enumerate() {
-                // Compute the squared distance between the current color and the lookup color
-                #[inline]
-                fn pow2(x: i32) -> i32 {
-                    x * x
-                }
-                // 255^2 * 3 is below the maximum value of 2^32 so overflow is not possible
-                let sqr_dist = pow2(r0 - r1) + pow2(g0 - g1) + pow2(b0 - b1);
-
-                // If the squared distance is smaller than the current minimum, update the selection
-                if sqr_dist < selected.0 {
-                    selected = (sqr_dist, i as u8);
-                }
-            }
-            *out = selected.1;
+        let mut lookup = HashMap::with_capacity_and_hasher(
+            colorset.len(),
+            BuildHasherDefault::<ColorHasher>::new(),
+        );
+        for (index, (hash, _)) in colorset.iter().enumerate() {
+            lookup.insert(*hash, index as u8);
         }
 
         // Initialize the palette and identify the indexes of the colors
         let mut palette = Array2::zeros(matrix.dim());
         for (out, color) in palette.iter_mut().zip(matrix.iter()) {
-            let [r, g, b, a] = color.0;
-            if a >= ALPHA_THRESHOLD {
-                let item = u32::from_ne_bytes([r, g, b, 0xFF]);
+            if color.alpha() >= ALPHA_THRESHOLD {
+                let item_hash = ColorHash::from(color.to_rgb());
 
                 // Find the index of the color
-                if let Some(index) = colorset.iter().position(|(_, value)| *value == item) {
+                if let Some(index) = colorset.iter().position(|(hash, _)| *hash == item_hash) {
                     *out = index as u8;
                 }
             } else {
@@ -144,39 +132,55 @@ impl Inner {
             }
         }
 
-        Self { lookup, palette }
+        Self {
+            colorset,
+            lookup,
+            palette,
+            workbuffer: Array2::zeros(tile_size),
+        }
     }
 
     /// Given an input image, identify the indexes of the color of each pixel
-    fn identify_color_indexes(&self, img: &RgbaImage) -> Array2<u8> {
-        let mut matrix = Array2::zeros(to_index(img.width(), img.height()));
-
+    fn identify_color_indexes(&mut self, img: &RgbaImage) {
         // Assign color indexes to each pixel in the image
-        for (out, pixel) in matrix.iter_mut().zip(img.pixels()) {
-            let [r, g, b, a] = pixel.0;
-            if a >= ALPHA_THRESHOLD {
-                let index = Ix3(r as usize, g as usize, b as usize);
-                *out = self.lookup[index];
+        for (out, color) in self.workbuffer.iter_mut().zip(img.pixels()) {
+            if color.alpha() >= ALPHA_THRESHOLD {
+                // Check if the color has already been identified before
+                let rgb = color.to_rgb();
+                let hash = ColorHash::from(rgb);
+                *out = *self.lookup.entry(hash).or_insert_with(|| {
+                    let p1 = to_vec(rgb);
+
+                    // Find the index of the closest color in the color set.
+                    let mut selected = (u32::MAX, u8::MAX);
+                    for (i, &(_, p0)) in self.colorset.iter().enumerate() {
+                        let sqr_dist = squared_distance(p0, p1);
+
+                        // If the squared distance is smaller than the current minimum, update the selection
+                        if sqr_dist < selected.0 {
+                            selected = (sqr_dist, i as u8);
+                        }
+                    }
+                    selected.1
+                });
             } else {
                 *out = u8::MAX;
             }
         }
-
-        matrix
     }
 
     /// Once each pixel has been remapped to its index,
     /// try to identify a matching palette for the tile.
-    fn find_matching_palette(&self, matrix: &Array2<u8>) -> Result<(usize, Array2<u8>), ()> {
+    fn find_matching_palette(&self) -> Result<(usize, Array2<u8>), ()> {
         // Allocate a tile to store the palette index for each pixel.
         // We cannot use the input matrix directly as we will successively
         // try each palette while writing into the tile.
-        let mut tile = Array2::zeros(matrix.dim());
+        let mut tile = Array2::zeros(self.workbuffer.dim());
 
         // Try each palette successively
         'palette: for (pal_index, palette) in self.palette.columns().into_iter().enumerate() {
             // iterate over each pixel of the input image
-            'pixel: for (out, pixel_id) in tile.iter_mut().zip(matrix.iter()) {
+            'pixel: for (out, pixel_id) in tile.iter_mut().zip(self.workbuffer.iter()) {
                 // Check if the pixel is part of the palette selected
                 for (col_index, color_id) in palette.iter().enumerate() {
                     // Pixel of the image matches color from the selected palette
@@ -207,4 +211,65 @@ impl Inner {
 #[inline]
 const fn to_index(x: u32, y: u32) -> Ix2 {
     Ix2(x as Ix, y as Ix)
+}
+
+/// Convert a RGB value into a array of signed integers
+#[inline]
+const fn to_vec(rgb: Rgb<u8>) -> [i32; 3] {
+    let [r, g, b] = rgb.0;
+    [r as i32, g as i32, b as i32]
+}
+
+/// Compute the squared distance between two points in 3D space
+#[inline]
+const fn squared_distance(p0: [i32; 3], p1: [i32; 3]) -> u32 {
+    let [x0, y0, z0] = p0;
+    let [x1, y1, z1] = p1;
+
+    #[inline]
+    const fn pow2(x: i32) -> u32 {
+        (x * x) as u32
+    }
+
+    // 255^2 * 3 is below the maximum value of 2^32 so overflow is not possible
+    pow2(x0 - x1) + pow2(y0 - y1) + pow2(z0 - z1)
+}
+
+/// Wrapper to quickly hash the RGB color
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ColorHash(u32);
+
+/// Hasher for colors
+#[derive(Debug, Default, Clone, Copy)]
+struct ColorHasher(u32);
+
+impl From<Rgb<u8>> for ColorHash {
+    fn from(rgb: Rgb<u8>) -> Self {
+        let [r, g, b] = rgb.0;
+        Self(u32::from_ne_bytes([r, g, b, 0x00]))
+    }
+}
+
+impl Hash for ColorHash {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_u32(self.0);
+    }
+}
+
+impl Hasher for ColorHasher {
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.0 as u64
+    }
+
+    #[inline]
+    fn write_u32(&mut self, i: u32) {
+        self.0 = i;
+    }
+
+    /// Should not be used
+    fn write(&mut self, _: &[u8]) {
+        panic!("Invalid use")
+    }
 }

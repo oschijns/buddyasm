@@ -18,7 +18,7 @@ impl Builder {
     pub(super) fn process(
         &mut self,
         img: &RgbaImage,
-        pal: &Palette,
+        mut pal: Palette,
     ) -> Result<TileMap, TilesError> {
         // Get the dimensions of the input images in tiles.
         let tile_size = self.config.tile_size;
@@ -32,7 +32,7 @@ impl Builder {
 
         // Iterate over each tile of the input image
         for index in 0..dims.tiles_count() {
-            match self.process_one_tile(img, pal, dims, index) {
+            match self.process_one_tile(img, &mut pal, dims, index) {
                 Ok(tile_data) => {
                     let ix2 = dims.index_to_ix2(index);
                     tile_map[ix2] = tile_data;
@@ -56,7 +56,7 @@ impl Builder {
     fn process_one_tile(
         &mut self,
         img: &RgbaImage,
-        pal: &Palette,
+        pal: &mut Palette,
         dims: ImgTileDim,
         index: usize,
     ) -> Result<TileData, TileError> {
@@ -89,7 +89,7 @@ impl Builder {
     pub(super) fn process_fixed(
         &mut self,
         img: &RgbaImage,
-        pal: &Palette,
+        mut pal: Palette,
         map: &CharacterMapping,
     ) -> Result<(), TilesError> {
         // Get the dimensions of the input images in tiles.
@@ -101,7 +101,8 @@ impl Builder {
 
         // Iterate over the positions provided
         for (&coords, &index) in map.0.iter() {
-            if let Err(tile_error) = self.process_one_fixed_tile(img, pal, dims, coords, index) {
+            if let Err(tile_error) = self.process_one_fixed_tile(img, &mut pal, dims, coords, index)
+            {
                 errors.push((coords, tile_error));
             }
         }
@@ -118,7 +119,7 @@ impl Builder {
     fn process_one_fixed_tile(
         &mut self,
         img: &RgbaImage,
-        pal: &Palette,
+        pal: &mut Palette,
         dims: ImgTileDim,
         coords: Coords,
         index: usize,

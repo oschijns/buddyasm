@@ -155,18 +155,19 @@ impl Builder {
         match &entry.image {
             // Input is a common static image
             InputImage::Static(image) => {
-                let tile_map = self.process(&image.to_rgba8(), &entry.palette)?;
+                let tile_map = self.process(&image.to_rgba8(), entry.palette.clone())?;
                 // Encode the tiles for the target system
                 let image = OutputImage::Static(encode_tiles(profile, &tile_map));
                 Ok(Some(OutputEntry::new(entry, image)))
             }
             // Input is a character set (or similar)
             InputImage::FixedPosition { image, mapping } => {
-                let _ = self.process_fixed(&image.to_rgba8(), &entry.palette, mapping)?;
+                let _ = self.process_fixed(&image.to_rgba8(), entry.palette.clone(), mapping)?;
                 Ok(None)
             }
             InputImage::Aseprite(aseprite) => {
-                let (sequences, frames) = self.process_animations(aseprite, &entry.palette)?;
+                let (sequences, frames) =
+                    self.process_animations(aseprite, entry.palette.clone())?;
 
                 // Convert the TileMaps into OutMaps
                 let frames = frames.iter().map(|f| encode_tiles(profile, f)).collect();
