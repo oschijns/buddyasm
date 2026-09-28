@@ -46,7 +46,7 @@ impl Tile {
     #[inline]
     pub fn new(mut data: Array2<Pix>) -> Self {
         // reorder pixels to be easier to serialize
-        data.reverse_axes();
+        //data.reverse_axes();
         data.invert_axis(Axis(1));
         Self(ArcArray2::from(data))
     }
