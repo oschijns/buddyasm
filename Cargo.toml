@@ -2,6 +2,7 @@
 members = [
     "crates/common",
     "crates/text",
+    "crates/palette",
     "crates/tileset",
     "crates/translator",
 ]

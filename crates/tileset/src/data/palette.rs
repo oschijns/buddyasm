@@ -10,7 +10,7 @@ use std::{
     collections::{HashMap, HashSet},
     hash::{BuildHasherDefault, Hash, Hasher},
     path::Path,
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, RwLock},
 };
 
 /// Set of palettes to look for in an input image

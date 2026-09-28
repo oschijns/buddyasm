@@ -276,6 +276,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "buddyasm_palette"
+version = "0.0.1"
+dependencies = [
+ "buddyasm_common",
+ "clap",
+ "itertools 0.15.0",
+ "ndarray",
+ "serde",
+ "serde_json",
+ "textwrap",
+ "thiserror",
+]
+
+[[package]]
 name = "buddyasm_text"
 version = "0.0.1"
 dependencies = [
