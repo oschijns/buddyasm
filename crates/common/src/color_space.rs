@@ -7,6 +7,9 @@ use std::{
 /// RGB color
 pub type Color = [u8; 3];
 
+/// RGBA color
+pub type ColorA = [u8; 4];
+
 /// Point in 3D color space
 pub type Point = [i32; 3];
 
@@ -38,7 +41,17 @@ struct InnerWrite {
 
 /// Accumulator to build a color space partitioning
 #[derive(Debug)]
-pub struct ColorSpaceBuilder(HashSet<Color>);
+pub struct ColorSpaceBuilder {
+    /// color accumulator
+    set: HashSet<Color>,
+
+    /// threshold for discarding colors based on their alpha channel
+    pub alpha_threshold: u8,
+}
+
+/// Default threshold for discarding colors based on their alpha channel.
+/// Any value below this threshold is treated as transparent.
+pub const ALPHA_THRESHOLD: u8 = 128;
 
 impl ColorSpace {
     /// Create a color space from the given list of colors
@@ -55,26 +68,41 @@ impl ColorSpaceBuilder {
     /// Create a builder for a color space partitioning
     #[inline]
     pub fn new() -> Self {
-        Self(HashSet::new())
+        Self {
+            set: HashSet::new(),
+            alpha_threshold: ALPHA_THRESHOLD,
+        }
     }
 
     /// Create a builder for a color space partitioning
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
-        Self(HashSet::with_capacity(capacity))
+        Self {
+            set: HashSet::with_capacity(capacity),
+            alpha_threshold: ALPHA_THRESHOLD,
+        }
     }
 
     /// Add a color in the accumulator
     #[inline]
     pub fn add(&mut self, color: Color) {
-        self.0.insert(color);
+        self.set.insert(color);
+    }
+
+    /// Add a color in the accumulator
+    #[inline]
+    pub fn add_a(&mut self, color: ColorA) {
+        let [r, g, b, a] = color;
+        if a >= self.alpha_threshold {
+            self.set.insert([r, g, b]);
+        }
     }
 
     /// Output the color partitioning
     pub fn finish(self) -> ColorSpace {
         // Assign a unique index for each color
-        let mut list = Vec::with_capacity(self.0.len());
-        for (index, color) in self.0.iter().enumerate() {
+        let mut list = Vec::with_capacity(self.set.len());
+        for (index, color) in self.set.iter().enumerate() {
             list.push((*color, index));
         }
 
@@ -112,23 +140,25 @@ pub enum LockError {
 }
 
 impl ColorSpace {
-    /// Given an input image, identify the indexes of the color of each pixel
+    /// Given an color, identify the indexes of the color of each pixel.
+    /// If the color is not a perfect match return the index of the closest color
+    /// in the set and cache the new mapping for faster lookup on the next iteration.
     pub fn identify_color_index(&self, color: Color) -> Result<usize, LockError> {
         // Check if the color has already been identified before
         let hash = ColorHash::from(color);
 
         // Lock the lookup map for reading
-        let Ok(lookup) = self.write.read() else {
+        let Ok(write) = self.write.read() else {
             return Err(LockError::ReadLock);
         };
 
         // Check if an index has already be identified for this color
-        if let Some(index) = lookup.lookup.get(&hash) {
+        if let Some(index) = write.lookup.get(&hash) {
             Ok(*index)
         } else {
             // Drop the lock on the lookup map while we search
             // for the index of the closest color.
-            drop(lookup);
+            drop(write);
 
             // Otherwise look for an index based on the proximity
             // to the colors in the initial colorset.
@@ -147,13 +177,31 @@ impl ColorSpace {
             }
 
             // Lock the lookup map in writing to insert the new entry
-            let Ok(mut lookup) = self.write.write() else {
+            let Ok(mut write) = self.write.write() else {
                 return Err(LockError::WriteLock);
             };
-            lookup.lookup.insert(hash, selected.1);
+            write.lookup.insert(hash, selected.1);
 
             // Return the index found
             Ok(selected.1)
+        }
+    }
+
+    /// Get the index of the provided color.
+    pub fn get_color_index(&self, color: Color) -> Option<usize> {
+        // Check if the color has already been identified before
+        let hash = ColorHash::from(color);
+
+        // Lock the lookup map for reading
+        let Ok(write) = self.write.read() else {
+            return None;
+        };
+
+        // Check if an index has already be identified for this color
+        if let Some(index) = write.lookup.get(&hash) {
+            Some(*index)
+        } else {
+            None
         }
     }
 }

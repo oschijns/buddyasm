@@ -7,7 +7,7 @@ use crate::{
     process::config::ToConfig,
     profile::Profile,
 };
-use buddyasm_common::manifest::Manifest as _;
+use buddyasm_common::{color_space::ALPHA_THRESHOLD, manifest::Manifest as _};
 use image::{GenericImageView as _, open};
 
 /// Load an input stack from the provided config
@@ -20,7 +20,7 @@ pub fn prepare(profile: Profile, manifest: &Manifest) -> Result<InputStack, Inpu
     // Load the default palette
     let default_palette = if let Some(path) = &manifest.config.default_palette {
         let path = manifest.evaluate_path(path);
-        match Palette::load_palette(&path) {
+        match Palette::load_from_disk(&path, ALPHA_THRESHOLD) {
             Ok(palette) => Some(palette),
             Err(err) => {
                 // Default palette is not valid
@@ -84,7 +84,7 @@ impl<'m> Context<'m> {
         // Check if we have a palette override for this entry
         let palette = if let Some(path_palette) = &entry.palette {
             let path = self.manifest.evaluate_path(path_palette);
-            match Palette::load_palette(&path) {
+            match Palette::load_from_disk(&path, ALPHA_THRESHOLD) {
                 Ok(palette) => palette,
                 Err(err) => {
                     // Palette specified for entry is not valid
