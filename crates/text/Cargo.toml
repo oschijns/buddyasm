@@ -38,8 +38,7 @@ ndarray = { version = "0.17", features = ["rayon", "serde"] }
 itertools = "0.15"
 
 # Generate source files from data processed
-tera = { version = "2", features = ["fast"] }
-
+minijinja = { version = "2.24", features = ["custom_syntax"] }
 
 # Command-line arguments
 clap = { version = "4.6", features = ["derive"], optional = true }

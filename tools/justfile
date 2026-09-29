@@ -1,0 +1,12 @@
+
+# Palette for NES/Famicom
+palette-nes:
+    uv run palette --input assets/palette-nes.png --output /tmp/palette-nes.txt
+
+# Palette for GameBoy
+palette-gb:
+    uv run palette --input assets/palette-gb.png --output /tmp/palette-gb.txt
+
+# Palette for SEGA MasterSystem/GameGear
+palette-sms:
+    uv run palette --input assets/palette-sms.png --output /tmp/palette-sms.txt

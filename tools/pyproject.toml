@@ -1,0 +1,19 @@
+[project]
+name = "tools"
+version = "0.1.0"
+description = "Set of tools for helping with buddyasm development"
+readme = "README.md"
+authors = [
+    { name = "Olivier Schyns" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "imageio>=2.38.0",
+]
+
+[project.scripts]
+palette = "tools.palette:main"
+
+[build-system]
+requires = ["uv_build>=0.12.20,<0.13.0"]
+build-backend = "uv_build"
