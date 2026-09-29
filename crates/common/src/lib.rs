@@ -6,8 +6,8 @@ pub mod manifest;
 /// List of systems supported
 pub mod system;
 
-/// Color indexing system
-pub mod color_indexing;
+/// Color space partitioning system
+pub mod color_space;
 
 // re-export dependencies
 pub use anyhow;

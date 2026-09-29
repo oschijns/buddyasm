@@ -36,35 +36,49 @@ struct InnerWrite {
     lookup: HashMap<ColorHash, usize, BuildHasherDefault<ColorHasher>>,
 }
 
+/// Accumulator to build a color space partitioning
+#[derive(Debug)]
+pub struct ColorSpaceBuilder(HashSet<Color>);
+
 impl ColorSpace {
     /// Create a color space from the given list of colors
-    pub fn load(color_list: &[Color]) -> Self {
-        // Identify unique colors
-        let mut set = HashSet::with_capacity(color_list.len());
-        for color in color_list.iter() {
-            set.insert(*color);
-        }
-
-        // Assign a unique index for each color
-        let mut list = Vec::with_capacity(set.len());
-        for (index, color) in set.iter().enumerate() {
-            list.push((*color, index));
-        }
-
-        let (read, write) = load_indexed_colors(&list);
-        Self {
-            read: Arc::new(read),
-            write: Arc::new(RwLock::new(write)),
-        }
-    }
-
-    /// Create a color space from the given list of colors
-    pub fn load_indexed(color_list: &[(Color, usize)]) -> Self {
+    pub fn load(color_list: &[(Color, usize)]) -> Self {
         let (read, write) = load_indexed_colors(color_list);
         Self {
             read: Arc::new(read),
             write: Arc::new(RwLock::new(write)),
         }
+    }
+}
+
+impl ColorSpaceBuilder {
+    /// Create a builder for a color space partitioning
+    #[inline]
+    pub fn new() -> Self {
+        Self(HashSet::new())
+    }
+
+    /// Create a builder for a color space partitioning
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(HashSet::with_capacity(capacity))
+    }
+
+    /// Add a color in the accumulator
+    #[inline]
+    pub fn add(&mut self, color: Color) {
+        self.0.insert(color);
+    }
+
+    /// Output the color partitioning
+    pub fn finish(self) -> ColorSpace {
+        // Assign a unique index for each color
+        let mut list = Vec::with_capacity(self.0.len());
+        for (index, color) in self.0.iter().enumerate() {
+            list.push((*color, index));
+        }
+
+        ColorSpace::load(&list)
     }
 }
 
