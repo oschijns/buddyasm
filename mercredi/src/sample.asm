@@ -7,7 +7,7 @@
 SrcLo   = $00
 SrcHi   = $01
 Rows    = $02
-Address = $2000 + 6 * 32 + 10
+Address = $2000 + 4 * 32 + 7
 Width   = 10
 
 DrawPicture:
@@ -76,6 +76,36 @@ SkipTiles:
 
     DEC Rows
     BNE NextRow
+
+    ; Write the artwork attribute data to the nametable attribute table
+    LDA #hi(ppu_nametable_0 + PPU_NAMETABLE_SIZE_TILE_MAP)
+    STA ppu_address
+    LDA #lo(ppu_nametable_0 + PPU_NAMETABLE_SIZE_TILE_MAP)
+    STA ppu_address
+
+    ; Source address
+    LDA #lo(artwork.attributes)
+    STA SrcLo
+    LDA #hi(artwork.attributes)
+    STA SrcHi
+
+    LDA #artwork.attributes.len
+    STA Rows
+
+WriteAttribute:
+    LDY #0
+    LDA (SrcLo), y
+    STA ppu_data
+
+    ; Advance source pointer
+    INC SrcLo
+    BNE NoAttributeCarry
+
+    INC SrcHi
+
+NoAttributeCarry:
+    DEC Rows
+    BNE WriteAttribute
 
     ; Reset scroll
     LDA #0
