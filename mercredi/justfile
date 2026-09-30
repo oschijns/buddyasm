@@ -1,0 +1,15 @@
+
+# Generate the tileset
+tileset:
+    mkdir -p assets/output
+    cargo run --package buddyasm_tileset --features "binary" -- --manifest assets/manifest.toml
+
+
+# Create the ROM
+build:
+    customasm src/main.asm -o output/mercredi.nes
+
+
+# Run the ROM
+run:
+    ares --system "Famicom" output/mercredi.nes
