@@ -7,8 +7,26 @@
 SrcLo   = $00
 SrcHi   = $01
 Rows    = $02
-Address = $2000 + 4 * 32 + 7
+Address = ppu_nametable_0 + 4 * PPU_NAMETABLE_TILE_MAP_WIDTH + 7
 Width   = 10
+
+AddrText = ppu_nametable_0 + 16 * PPU_NAMETABLE_TILE_MAP_WIDTH + 4
+
+TextLine0:
+#d "NOUS SOMMES MERCREDI"
+    .len = $ - TextLine0
+
+TextLine1:
+#d "CA TOMBE BIEN, C'EST"
+    .len = $ - TextLine1
+
+TextLine2:
+#d "LE JOUR OU ON SORT"
+    .len = $ - TextLine2
+
+TextLine3:
+#d "LES POUBELLES !"
+    .len = $ - TextLine3
 
 DrawPicture:
 
@@ -39,7 +57,7 @@ WriteTile:
 
     LDY #0
     LDA (SrcLo), y
-    STA $2007
+    STA ppu_data
 
     ; Advance source pointer
     INC SrcLo
@@ -65,7 +83,7 @@ NoCarry:
 SkipTiles:
 
     LDA #0
-    STA $2007
+    STA ppu_data
 
     DEX
     BNE SkipTiles
@@ -106,6 +124,70 @@ WriteAttribute:
 NoAttributeCarry:
     DEC Rows
     BNE WriteAttribute
+
+
+; Write lines of text
+
+; Write three lines of text to the nametable
+
+; LINE 0
+    LDA #hi(AddrText)
+    STA ppu_address
+    LDA #lo(AddrText)
+    STA ppu_address
+
+    LDY #0
+WriteLine0:
+    LDA TextLine0, y
+    STA ppu_data
+    iny
+    cpy #TextLine0.len
+    bne WriteLine0
+
+; LINE 1
+    LDA #hi(AddrText + PPU_NAMETABLE_TILE_MAP_WIDTH * 2)
+    STA ppu_address
+    LDA #lo(AddrText + PPU_NAMETABLE_TILE_MAP_WIDTH * 2)
+    STA ppu_address
+
+    LDY #0
+WriteLine1:
+    LDA TextLine1, y
+    STA ppu_data
+    iny
+    cpy #TextLine1.len
+    bne WriteLine1
+
+; LINE 2
+    LDA #hi(AddrText + PPU_NAMETABLE_TILE_MAP_WIDTH * 3)
+    STA ppu_address
+    LDA #lo(AddrText + PPU_NAMETABLE_TILE_MAP_WIDTH * 3)
+    STA ppu_address
+
+    LDY #0
+WriteLine2:
+    LDA TextLine2, y
+    STA ppu_data
+    iny
+    cpy #TextLine2.len
+    bne WriteLine2
+
+; LINE 3
+    LDA #hi(AddrText + PPU_NAMETABLE_TILE_MAP_WIDTH * 4)
+    STA ppu_address
+    LDA #lo(AddrText + PPU_NAMETABLE_TILE_MAP_WIDTH * 4)
+    STA ppu_address
+
+    LDY #0
+WriteLine3:
+    LDA TextLine3, y
+    STA ppu_data
+    iny
+    cpy #TextLine3.len
+    bne WriteLine3
+
+
+; Reset scroll
 
     ; Reset scroll
     LDA #0
