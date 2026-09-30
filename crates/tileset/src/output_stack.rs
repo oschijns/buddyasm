@@ -195,10 +195,10 @@ pub enum TileError {
     DistinctOverflow,
 
     /// The requested tile position is out of the image
-    #[error("Requested tile position is out of bound")]
-    OutOfBound,
+    #[error("Requested tile position ({0:>3}, {1:>3}) is out of bound")]
+    OutOfBound(u16, u16),
 
     /// The given index is out of the boundaries of the target tileset
-    #[error("Given index 0x{0:4x} is out of bound")]
+    #[error("Given index 0x{0:0>2x} is already assigned")]
     InvalidIndex(u16),
 }

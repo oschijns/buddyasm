@@ -127,7 +127,7 @@ impl Builder {
         // The requested index must be valid
         let [ix, iy] = coords;
         if !dims.contains_16(ix, iy) {
-            return Err(TileError::OutOfBound);
+            return Err(TileError::OutOfBound(ix, iy));
         }
 
         // Check that the requested position is valid

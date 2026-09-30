@@ -51,6 +51,14 @@ pub fn prepare(profile: Profile, manifest: &Manifest) -> Result<InputStack, Inpu
         }
     }
 
+    // Reorder the entries so that the fixed mapping entries are processed first.
+    // This is important because the fixed mapping entries may define a specific tile layout that other entries depend on.
+    stack.sort_by(|a, b| {
+        let a_fixed = a.image.is_fixed();
+        let b_fixed = b.image.is_fixed();
+        b_fixed.cmp(&a_fixed)
+    });
+
     // Check if we encountered errors
     if errors.is_empty() {
         // Complete the stack

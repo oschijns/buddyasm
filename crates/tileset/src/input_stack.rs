@@ -86,6 +86,13 @@ pub enum InputImage {
     TiledMap(Box<tiled::Map>),
 }
 
+impl InputImage {
+    #[inline]
+    pub fn is_fixed(&self) -> bool {
+        matches!(self, InputImage::FixedPosition { .. })
+    }
+}
+
 /// Wrapper for owned Aseprite file
 #[self_referencing]
 pub struct Aseprite {
