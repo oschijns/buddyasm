@@ -38,21 +38,31 @@ output_json = true
 template = "template.asm"
 
 
-#[[entry]]
-#
-## Load a font file
-#image = "font.png"
-#palette = "font-palette.png"
-#
-## Pick all printable ASCII characters and place them at the expected location for ASCII characters
-#fixed_mapping = [{ start = 0x20, end = 0x2F, target = 0x20 }]
-#
-#
-#[[entry]]
-#
-## Load a font file
-#image = "font.png"
-#palette = "font-palette.png"
-#
-## Pick all printable ASCII characters and place them at the expected location for ASCII characters
-#fixed_mapping = [{ start = 0x41, end = 0x5A, target = 0x41 }]
+[[entry]]
+
+# Load a font file
+image = "font.png"
+palette = "font-palette.png"
+
+# Pick all printable ASCII characters and place them at the expected location for ASCII characters
+fixed_mapping = [{ start = 0x20, end = 0x21, target = 0x00 }]
+
+
+[[entry]]
+
+# Load a font file
+image = "font.png"
+palette = "font-palette.png"
+
+# Pick all printable ASCII characters and place them at the expected location for ASCII characters
+fixed_mapping = [{ start = 0x21, end = 0x2F, target = 0x21 }]
+
+
+[[entry]]
+
+# Load a font file
+image = "font.png"
+palette = "font-palette.png"
+
+# Pick all printable ASCII characters and place them at the expected location for ASCII characters
+fixed_mapping = [{ start = 0x41, end = 0x5A, target = 0x41 }]
