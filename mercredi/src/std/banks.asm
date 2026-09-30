@@ -35,8 +35,8 @@
 
 ; Fill the CHR bank with the tileset
 #bank chr
-#d $incbin("../../output/tileset.chr")
-#d $incbin("../../output/tileset.chr")
+#d $incbin("../../assets/output/tileset.chr")
+#d $incbin("../../assets/output/tileset.chr")
 
 ; Note:
 ; "consts" and "program" are split to allow intertwining

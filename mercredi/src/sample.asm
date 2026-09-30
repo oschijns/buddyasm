@@ -1,6 +1,6 @@
 #once
 
-#include "../output/para.asm"
+#include "../assets/output/mercredi.asm"
 
 #bank program
 
@@ -8,6 +8,7 @@ SrcLo   = $00
 SrcHi   = $01
 Rows    = $02
 Address = $2000 + 6 * 32 + 10
+Width   = 10
 
 DrawPicture:
 
@@ -23,16 +24,16 @@ DrawPicture:
     LDA #hi(artwork.indexes)
     STA SrcHi
 
-    LDA #12
+    LDA #10
     STA Rows
 
 NextRow:
 
     ; --------------------------------
-    ; Write 12 tiles
+    ; Write 10 tiles
     ; --------------------------------
 
-    LDX #12
+    LDX #Width
 
 WriteTile:
 
@@ -59,7 +60,7 @@ NoCarry:
     ; Therefore skip 20.
     ; --------------------------------
 
-    LDX #20
+    LDX #(32 - Width)
 
 SkipTiles:
 

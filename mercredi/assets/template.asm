@@ -12,5 +12,9 @@ artwork:
         ..len = $ - .indexes
 
     .attributes:
-#d {% for tile in data -%}{{ tile.attr | hex }}, {% endfor %}
+#d {% for tile in data -%}
+    {%- if (loop.index0 % 2 == 0) and ((loop.index0 // 10) % 2 == 0) -%}
+        {{ tile.attr | hex }},
+    {%- endif -%}
+{%- endfor %}
         ..len = $ - .attributes

@@ -7,9 +7,9 @@ tileset:
 
 # Create the ROM
 build:
-    customasm src/main.asm -o output/mercredi.nes
+    customasm src/main.asm -o assets/output/mercredi.nes
 
 
 # Run the ROM
 run:
-    ares --system "Famicom" output/mercredi.nes
+    ares --system "Famicom" assets/output/mercredi.nes
