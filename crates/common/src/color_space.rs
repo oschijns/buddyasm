@@ -1,14 +1,9 @@
+use rgb::{RGB8, RGBA8, Rgb, Rgba};
 use std::{
     collections::{HashMap, HashSet},
     hash::{BuildHasherDefault, Hash, Hasher},
     sync::{Arc, RwLock},
 };
-
-/// RGB color
-pub type Color = [u8; 3];
-
-/// RGBA color
-pub type ColorA = [u8; 4];
 
 /// Point in 3D color space
 pub type Point = [i32; 3];
@@ -43,7 +38,7 @@ struct InnerWrite {
 #[derive(Debug)]
 pub struct ColorSpaceBuilder {
     /// color accumulator
-    set: HashSet<Color>,
+    set: HashSet<RGB8>,
 
     /// threshold for discarding colors based on their alpha channel
     pub alpha_threshold: u8,
@@ -55,7 +50,7 @@ pub const ALPHA_THRESHOLD: u8 = 128;
 
 impl ColorSpace {
     /// Create a color space from the given list of colors
-    pub fn load(color_list: &[(Color, usize)]) -> Self {
+    pub fn load(color_list: &[(RGB8, usize)]) -> Self {
         let (read, write) = load_indexed_colors(color_list);
         Self {
             read: Arc::new(read),
@@ -85,16 +80,16 @@ impl ColorSpaceBuilder {
 
     /// Add a color in the accumulator
     #[inline]
-    pub fn add(&mut self, color: Color) {
+    pub fn add(&mut self, color: RGB8) {
         self.set.insert(color);
     }
 
     /// Add a color in the accumulator
     #[inline]
-    pub fn add_a(&mut self, color: ColorA) {
-        let [r, g, b, a] = color;
+    pub fn add_a(&mut self, color: RGBA8) {
+        let Rgba { r, g, b, a } = color;
         if a >= self.alpha_threshold {
-            self.set.insert([r, g, b]);
+            self.set.insert(Rgb { r, g, b });
         }
     }
 
@@ -112,7 +107,7 @@ impl ColorSpaceBuilder {
 
 /// Given a list of colors with their corresponding index,
 /// return structures for indexing the color space.
-fn load_indexed_colors(color_list: &[(Color, usize)]) -> (InnerRead, InnerWrite) {
+fn load_indexed_colors(color_list: &[(RGB8, usize)]) -> (InnerRead, InnerWrite) {
     // Assign a unique index to each color encountered by converting the color set into a list
     let mut colorset = Vec::with_capacity(color_list.len());
     for (color, index) in color_list.iter() {
@@ -143,7 +138,7 @@ impl ColorSpace {
     /// Given an color, identify the indexes of the color of each pixel.
     /// If the color is not a perfect match return the index of the closest color
     /// in the set and cache the new mapping for faster lookup on the next iteration.
-    pub fn identify_color_index(&self, color: Color) -> Result<usize, LockError> {
+    pub fn identify_color_index(&self, color: RGB8) -> Result<usize, LockError> {
         // Check if the color has already been identified before
         let hash = ColorHash::from(color);
 
@@ -188,7 +183,7 @@ impl ColorSpace {
     }
 
     /// Get the index of the provided color.
-    pub fn get_color_index(&self, color: Color) -> Option<usize> {
+    pub fn get_color_index(&self, color: RGB8) -> Option<usize> {
         // Check if the color has already been identified before
         let hash = ColorHash::from(color);
 
@@ -223,8 +218,8 @@ const fn squared_distance(p0: Point, p1: Point) -> u32 {
 
 /// Convert a RGB value into a array of signed integers
 #[inline]
-const fn to_point(color: Color) -> Point {
-    let [r, g, b] = color;
+const fn to_point(color: RGB8) -> Point {
+    let Rgb { r, g, b } = color;
     [r as i32, g as i32, b as i32]
 }
 
@@ -236,9 +231,9 @@ struct ColorHash(u32);
 #[derive(Debug, Default, Clone, Copy)]
 struct ColorHasher(u32);
 
-impl From<Color> for ColorHash {
-    fn from(color: Color) -> Self {
-        let [r, g, b] = color;
+impl From<RGB8> for ColorHash {
+    fn from(color: RGB8) -> Self {
+        let Rgb { r, g, b } = color;
         Self(u32::from_ne_bytes([r, g, b, 0x00]))
     }
 }

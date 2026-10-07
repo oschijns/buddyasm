@@ -4,14 +4,13 @@ use crate::data::{
     coords::TileSize,
     tileset::{Pix, Tile},
 };
-use buddyasm_common::color_space::{ColorA, ColorSpace, ColorSpaceBuilder, LockError};
-use image::{ImageResult, Rgb, RgbaImage};
-use ndarray::{Array2, Ix, Ix2};
-use std::{
-    hash::{Hash, Hasher},
-    path::Path,
-    sync::Arc,
+use buddyasm_common::{
+    color_space::{ColorSpace, ColorSpaceBuilder, LockError},
+    rgb::{RGBA8, Rgb, Rgba},
 };
+use image::{ImageResult, RgbaImage};
+use ndarray::{Array2, Ix, Ix2};
+use std::{path::Path, sync::Arc};
 
 /// Set of palettes to look for in an input image
 #[derive(Debug, Clone)]
@@ -54,7 +53,7 @@ impl Palette {
     }
 
     /// Convert a 2D matrix of RGBA colors into a usable palette.
-    pub fn from_matrix(matrix: Array2<ColorA>, alpha_threshold: u8) -> Self {
+    pub fn from_matrix(matrix: Array2<RGBA8>, alpha_threshold: u8) -> Self {
         // Identify unique colors in the matrix
         let mut builder = ColorSpaceBuilder::with_capacity(matrix.len());
         builder.alpha_threshold = alpha_threshold;
@@ -65,10 +64,11 @@ impl Palette {
 
         // Initialize the palette and identify the indexes of the colors
         let mut palette = Array2::zeros(matrix.dim());
-        for (out, &[r, g, b, a]) in palette.iter_mut().zip(matrix.iter()) {
+        for (out, &rgba) in palette.iter_mut().zip(matrix.iter()) {
             // Transparent pixels are assigned the maximum index to avoid conflicts with opaque colors
+            let Rgba { r, g, b, a } = rgba;
             if a >= alpha_threshold
-                && let Some(index) = partition.get_color_index([r, g, b])
+                && let Some(index) = partition.get_color_index(Rgb { r, g, b })
             {
                 *out = index as u8;
             } else {
@@ -104,7 +104,7 @@ impl Palette {
 
 /// Load a palette matrix from an image file on disk.
 /// Returns a simple 2D matrix of RGBA colors.
-fn load_matrix_from_image(path: &Path) -> ImageResult<Array2<ColorA>> {
+fn load_matrix_from_image(path: &Path) -> ImageResult<Array2<RGBA8>> {
     // load the image into a RGBA image
     let img = image::ImageReader::open(path)?.decode()?.into_rgba8();
 
@@ -115,12 +115,28 @@ fn load_matrix_from_image(path: &Path) -> ImageResult<Array2<ColorA>> {
 
     // Fill the matrix with data
     for (x, y, pix) in img.enumerate_pixels() {
-        matrix[to_index(x, y)] = pix.0;
+        let [r, g, b, a] = pix.0;
+        matrix[to_index(x, y)] = Rgba { r, g, b, a };
     }
 
     // Return the palette
     Ok(matrix)
 }
+
+/*
+ * TODO:
+ * Processing the image is done in two steps:
+ * First find closest color from palette for each RGBA value.
+ * Second find palette which verify constraints of tile.
+ *
+ * But as soon as we have completed the first step, we loose the gradient
+ * information and we cannot apply the dithering algorithm. So we should keep
+ * track of the initial RGBA image so that we can apply the dithering using the
+ * palette that was found. And then reidentify the color indexes.
+ *
+ * Since this involve a lot more processing, we can hide this feature behind a
+ * flag in the manifest. Thus we would have an optional "dithering" attribute.
+ */
 
 impl Palette {
     /// Given an input image, identify the indexes of the color of each pixel
@@ -133,7 +149,7 @@ impl Palette {
         for (out, &pixel) in workbuffer.iter_mut().zip(img.pixels()) {
             let [r, g, b, a] = pixel.0;
             if a >= self.alpha_threshold {
-                *out = self.partition.identify_color_index([r, g, b])? as u8;
+                *out = self.partition.identify_color_index(Rgb { r, g, b })? as u8;
             } else {
                 *out = u8::MAX;
             }
@@ -180,6 +196,11 @@ impl Palette {
 
         Err(PaletteError::NoMatch)
     }
+
+    // TODO:
+    // Apply dithering to initial RGBA image.
+    // Reapply a simplified version of `identify_color_indexes` with the palette
+    // that was selected.
 }
 
 /// Convert image coordinates into ndarray coordinates

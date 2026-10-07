@@ -31,5 +31,5 @@ def main() -> None:
             b = int(pixel[2])
 
             # Prepare the text line to write
-            line = f"([0x{r:0>2x}, 0x{g:0>2x}, 0x{b:0>2x}], 0x{index:0>2x}),\n"
+            line = f"(rgb(0x{r:0>2x}{g:0>2x}{b:0>2x}), 0x{index:0>2x}),\n"
             output.write(line)

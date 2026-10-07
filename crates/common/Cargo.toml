@@ -23,3 +23,6 @@ toml = "1.1"
 
 # Handle errors
 anyhow = "1.0"
+
+# Identify colors by their RGB values
+rgb = "0.8"
