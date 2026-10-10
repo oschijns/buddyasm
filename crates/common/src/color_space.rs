@@ -5,9 +5,6 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-/// Point in 3D color space
-pub type Point = [i32; 3];
-
 /// Define a partitioning of the color space given a finite set of colors.
 #[derive(Debug, Clone)]
 pub struct ColorSpace {
@@ -22,7 +19,10 @@ pub struct ColorSpace {
 #[derive(Debug)]
 struct InnerRead {
     /// Set of unique colors extracted from the palette
-    colorset: Vec<(ColorHash, usize, Point)>,
+    colorset: Vec<(ColorHash, usize, RGB8)>,
+
+    /// Mapping between indexes and color
+    map: HashMap<usize, RGB8>,
 }
 
 /// Storage for the processed palette.
@@ -31,7 +31,7 @@ struct InnerWrite {
     /// Store already identified mapping between RGB colors and corresponding index.
     /// This map is initially filled with colors from the palette but may be completed
     /// overtime if we encounter colors that are close but not perfect match.
-    lookup: HashMap<ColorHash, usize, BuildHasherDefault<ColorHasher>>,
+    lookup: HashMap<ColorHash, (usize, RGB8), BuildHasherDefault<ColorHasher>>,
 }
 
 /// Accumulator to build a color space partitioning
@@ -109,19 +109,22 @@ impl ColorSpaceBuilder {
 /// return structures for indexing the color space.
 fn load_indexed_colors(color_list: &[(RGB8, usize)]) -> (InnerRead, InnerWrite) {
     // Assign a unique index to each color encountered by converting the color set into a list
-    let mut colorset = Vec::with_capacity(color_list.len());
+    let count = color_list.len();
+    let mut colorset = Vec::with_capacity(count);
+    let mut map = HashMap::with_capacity(count);
     for (color, index) in color_list.iter() {
-        colorset.push((ColorHash::from(*color), *index, to_point(*color)));
+        colorset.push((ColorHash::from(*color), *index, *color));
+        map.insert(*index, *color);
     }
 
     // Initialize the lookup table and fill it with color indexes
     let mut lookup =
         HashMap::with_capacity_and_hasher(colorset.len(), BuildHasherDefault::<ColorHasher>::new());
-    for (hash, index, _) in colorset.iter() {
-        lookup.insert(*hash, *index);
+    for (hash, index, color) in colorset.iter() {
+        lookup.insert(*hash, (*index, *color));
     }
 
-    (InnerRead { colorset }, InnerWrite { lookup })
+    (InnerRead { colorset, map }, InnerWrite { lookup })
 }
 
 /// Error encountered when trying to lock a shared resource
@@ -138,7 +141,7 @@ impl ColorSpace {
     /// Given an color, identify the indexes of the color of each pixel.
     /// If the color is not a perfect match return the index of the closest color
     /// in the set and cache the new mapping for faster lookup on the next iteration.
-    pub fn identify_color_index(&self, color: RGB8) -> Result<usize, LockError> {
+    pub fn identify_color_index(&self, color: RGB8) -> Result<(usize, RGB8), LockError> {
         // Check if the color has already been identified before
         let hash = ColorHash::from(color);
 
@@ -148,26 +151,22 @@ impl ColorSpace {
         };
 
         // Check if an index has already be identified for this color
-        if let Some(index) = write.lookup.get(&hash) {
-            Ok(*index)
+        if let Some((index, color2)) = write.lookup.get(&hash) {
+            Ok((*index, *color2))
         } else {
             // Drop the lock on the lookup map while we search
             // for the index of the closest color.
             drop(write);
 
-            // Otherwise look for an index based on the proximity
-            // to the colors in the initial colorset.
-            let p1 = to_point(color);
-
             // Find the index of the closest color in the color set.
-            let mut selected = (u32::MAX, usize::MAX);
-            for &(_, index, p0) in self.read.colorset.iter() {
-                let sqr_dist = squared_distance(p0, p1);
+            let mut selected = (u32::MAX, usize::MAX, RGB8::default());
+            for &(_, index, color2) in self.read.colorset.iter() {
+                let sqr_dist = squared_distance(color, color2);
 
                 // If the squared distance is smaller than
                 // the current minimum, update the selection.
                 if sqr_dist < selected.0 {
-                    selected = (sqr_dist, index);
+                    selected = (sqr_dist, index, color2);
                 }
             }
 
@@ -175,10 +174,10 @@ impl ColorSpace {
             let Ok(mut write) = self.write.write() else {
                 return Err(LockError::WriteLock);
             };
-            write.lookup.insert(hash, selected.1);
+            write.lookup.insert(hash, (selected.1, selected.2));
 
             // Return the index found
-            Ok(selected.1)
+            Ok((selected.1, selected.2))
         }
     }
 
@@ -193,34 +192,33 @@ impl ColorSpace {
         };
 
         // Check if an index has already be identified for this color
-        if let Some(index) = write.lookup.get(&hash) {
+        if let Some((index, _)) = write.lookup.get(&hash) {
             Some(*index)
         } else {
             None
         }
     }
+
+    /// Get the index of the provided color.
+    pub fn by_index(&self, index: usize) -> Option<RGB8> {
+        self.read.map.get(&index).map(|c| *c)
+    }
 }
 
 /// Compute the squared distance between two points in 3D space
 #[inline]
-const fn squared_distance(p0: Point, p1: Point) -> u32 {
-    let [x0, y0, z0] = p0;
-    let [x1, y1, z1] = p1;
-
+const fn squared_distance(p0: RGB8, p1: RGB8) -> u32 {
     #[inline]
     const fn pow2(x: i32) -> u32 {
         (x * x) as u32
     }
 
     // 255^2 * 3 is below the maximum value of 2^32 so overflow is not possible
-    pow2(x0 - x1) + pow2(y0 - y1) + pow2(z0 - z1)
-}
+    let r = pow2(p0.r as i32 - p1.r as i32);
+    let g = pow2(p0.g as i32 - p1.g as i32);
+    let b = pow2(p0.b as i32 - p1.b as i32);
 
-/// Convert a RGB value into a array of signed integers
-#[inline]
-const fn to_point(color: RGB8) -> Point {
-    let Rgb { r, g, b } = color;
-    [r as i32, g as i32, b as i32]
+    r + g + b
 }
 
 /// Wrapper to quickly hash the RGB color
