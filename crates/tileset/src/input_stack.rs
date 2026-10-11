@@ -3,8 +3,8 @@ use crate::{
     profile::Profile,
 };
 use aseprite_loader::loader::{AsepriteFile, LoadSpriteError};
+use buddyasm_common::image::{DynamicImage, ImageError};
 use core::{error, fmt};
-use image::{DynamicImage, ImageError};
 use ouroboros::self_referencing;
 use std::{
     fs, io,

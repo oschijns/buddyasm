@@ -1,12 +1,12 @@
-use buddyasm_common::rgb::{RGB8, Rgb};
+use buddyasm_common::image::Rgb;
 
-const fn rgb(hex: u32) -> RGB8 {
+const fn rgb(hex: u32) -> Rgb<u8> {
     let [_, r, g, b] = u32::to_be_bytes(hex);
-    Rgb { r, g, b }
+    Rgb([r, g, b])
 }
 
 /// Mapping between RGB color and hardware index for the GameBoy
-pub const PALETTE_GB: [(RGB8, usize); 4] = [
+pub const PALETTE_GB: [(Rgb<u8>, usize); 4] = [
     (rgb(0x181818), 0x00),
     (rgb(0x4a5138), 0x01),
     (rgb(0x8c926b), 0x02),
@@ -15,7 +15,7 @@ pub const PALETTE_GB: [(RGB8, usize); 4] = [
 
 /// Mapping between RGB color and hardware index for the NES
 /// Some entries have been removed as they are not relevant
-pub const PALETTE_NES: [(RGB8, usize); 55] = [
+pub const PALETTE_NES: [(Rgb<u8>, usize); 55] = [
     // row 0x00
     (rgb(0x666666), 0x00),
     (rgb(0x002a88), 0x01),
@@ -93,7 +93,7 @@ pub const PALETTE_NES: [(RGB8, usize); 55] = [
 ];
 
 /// Mapping between RGB color and hardware index for the SEGA MasterSystem
-pub const PALETTE_SMS: [(RGB8, usize); 64] = [
+pub const PALETTE_SMS: [(Rgb<u8>, usize); 64] = [
     // row 0x00
     (rgb(0x000000), 0x00),
     (rgb(0x000055), 0x01),

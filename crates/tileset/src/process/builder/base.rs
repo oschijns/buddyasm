@@ -9,7 +9,7 @@ use crate::{
     },
     output_stack::{TileError, TilesError},
 };
-use image::{GenericImageView, RgbaImage};
+use buddyasm_common::image::{GenericImageView, RgbaImage};
 use itertools::Itertools;
 use ndarray::Array2;
 

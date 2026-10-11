@@ -8,7 +8,7 @@ use crate::{
     },
 };
 use aseprite_loader::loader::{AsepriteFile, LayerSelection, LoadImageError, Tag};
-use image::{Rgba, RgbaImage};
+use buddyasm_common::image::{Rgba, RgbaImage};
 use itertools::Itertools;
 use regex::Regex;
 use std::{str::FromStr, sync::LazyLock};

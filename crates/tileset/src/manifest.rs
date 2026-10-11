@@ -62,6 +62,10 @@ pub struct Config {
     #[serde(default)]
     pub default_palette: Option<PathBuf>,
 
+    /// Apply dithering to the images.
+    #[serde(default)]
+    pub use_dithering: bool,
+
     /// Path to the output directory relative to the manifest file.
     /// If not specified, defaults to `output` next to the manifest file.
     #[serde(default)]
@@ -190,6 +194,10 @@ pub struct ManifestEntry {
     /// Optional palette override
     #[serde(default)]
     pub palette: Option<PathBuf>,
+
+    /// Apply dithering to the image.
+    #[serde(default)]
+    pub use_dithering: bool,
 
     /// Optional fixed mapping
     #[serde(default)]

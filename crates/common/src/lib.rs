@@ -7,12 +7,15 @@ pub mod manifest;
 pub mod system;
 
 /// Color space partitioning system
+#[cfg(feature = "color-space")]
 pub mod color_space;
 
 // re-export dependencies
 pub use anyhow;
-pub use rgb;
 pub use toml;
+
+#[cfg(any(feature = "image", feature = "color-space"))]
+pub use image;
 
 pub mod prelude {
     // re-export

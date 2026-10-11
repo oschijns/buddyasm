@@ -1,5 +1,5 @@
 use crate::profile::constants::*;
-use buddyasm_common::{color_space::ColorSpace, rgb::RGB8, system::System};
+use buddyasm_common::{color_space::ColorSpace, image::Rgb, system::System};
 
 /// Raw data for constructing palettes
 mod constants;
@@ -7,7 +7,7 @@ mod constants;
 /// Create a color palette for the specified system
 #[rustfmt::skip]
 pub fn make_color_palette(system: System) -> ColorSpace {
-    let list: &[(RGB8, usize)] = match system {
+    let list: &[(Rgb<u8>, usize)] = match system {
         System::Famicom        => &PALETTE_NES,
         System::SuperFamicom   => todo!(),
         System::GameBoy        => &PALETTE_GB,

@@ -23,7 +23,10 @@ required-features = ["binary"]
 
 [dependencies]
 
-buddyasm_common = { path = "../common" }
+buddyasm_common = {
+    path = "../common",
+    features = ["color-space", "image"],
+}
 
 # Report errors when loading images
 thiserror.workspace = true
@@ -44,9 +47,6 @@ bytes = "1.11"
 bitfield = "0.19"
 bitvec = "1.0"
 bytemuck = "1.25"
-
-# Load regular image formats
-image = { version = "0.25", features = ["bmp", "png"] }
 
 # Load Aseprite file
 aseprite-loader = "0.4"

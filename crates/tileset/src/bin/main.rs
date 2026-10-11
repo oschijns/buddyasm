@@ -2,6 +2,7 @@
 
 use buddyasm_common::{
     anyhow,
+    image::EncodableLayout,
     manifest::{Manifest as _, load_manifest},
 };
 use buddyasm_tileset::{
@@ -14,7 +15,6 @@ use buddyasm_tileset::{
     template::{self, render},
 };
 use clap::{self, Parser};
-use image::EncodableLayout;
 use minijinja::Environment;
 use std::{
     env,

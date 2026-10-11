@@ -256,7 +256,7 @@ name = "buddyasm_common"
 version = "0.0.1"
 dependencies = [
  "anyhow",
- "rgb",
+ "image",
  "serde",
  "thiserror",
  "toml",
@@ -268,7 +268,6 @@ version = "0.0.1"
 dependencies = [
  "buddyasm_common",
  "clap",
- "image",
  "minijinja",
  "ndarray",
  "serde",
@@ -302,7 +301,6 @@ dependencies = [
  "bytemuck",
  "bytes",
  "clap",
- "image",
  "itertools 0.15.0",
  "minijinja",
  "ndarray",
@@ -1416,9 +1414,6 @@ name = "rgb"
 version = "0.8.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47b34b781b31e5d73e9fbc8689c70551fd1ade9a19e3e28cfec8580a79290cc4"
-dependencies = [
- "bytemuck",
-]
 
 [[package]]
 name = "rustversion"

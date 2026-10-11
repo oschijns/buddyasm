@@ -4,13 +4,13 @@ use crate::data::{
     coords::TileSize,
     tileset::{Pix, Tile},
 };
+use buddyasm_common::image::{
+    ImageResult, Pixel, Rgba, RgbaImage,
+    imageops::{ColorMap, dither},
+};
 use buddyasm_common::{
     color_space::{ColorSpace, ColorSpaceBuilder, LockError},
-    rgb::{self, RGBA8},
-};
-use image::{
-    ImageResult, Rgba, RgbaImage,
-    imageops::{ColorMap, dither},
+    image,
 };
 use ndarray::{Array2, Ix, Ix2};
 use std::{path::Path, sync::Arc};
@@ -54,13 +54,17 @@ pub enum PaletteError {
 
 impl Palette {
     /// Load a palette from a file
-    pub fn load_from_disk(path: &Path, alpha_threshold: u8) -> ImageResult<Self> {
+    pub fn load_from_disk(
+        path: &Path,
+        alpha_threshold: u8,
+        use_dithering: bool,
+    ) -> ImageResult<Self> {
         let matrix = load_matrix_from_image(path)?;
-        Ok(Self::from_matrix(matrix, alpha_threshold))
+        Ok(Self::from_matrix(matrix, alpha_threshold, use_dithering))
     }
 
     /// Convert a 2D matrix of RGBA colors into a usable palette.
-    pub fn from_matrix(matrix: Array2<RGBA8>, alpha_threshold: u8) -> Self {
+    pub fn from_matrix(matrix: Array2<Rgba<u8>>, alpha_threshold: u8, use_dithering: bool) -> Self {
         // Identify unique colors in the matrix
         let mut builder = ColorSpaceBuilder::with_capacity(matrix.len());
         builder.alpha_threshold = alpha_threshold;
@@ -69,13 +73,19 @@ impl Palette {
         }
         let partition = builder.finish();
 
+        // If we apply a dithering pass, generate sub palettes
+        let sub_palettes = if use_dithering {
+            SubPalette::create_sub_palettes(&matrix, alpha_threshold)
+        } else {
+            Vec::new()
+        };
+
         // Initialize the palette and identify the indexes of the colors
         let mut palette = Array2::zeros(matrix.dim());
-        for (out, &rgba) in palette.iter_mut().zip(matrix.iter()) {
+        for (out, color) in palette.iter_mut().zip(matrix.iter()) {
             // Transparent pixels are assigned the maximum index to avoid conflicts with opaque colors
-            let rgb::Rgba { r, g, b, a } = rgba;
-            if a >= alpha_threshold
-                && let Ok((index, _)) = partition.identify_color_index(rgb::Rgb { r, g, b })
+            if color.alpha() >= alpha_threshold
+                && let Ok((index, _)) = partition.identify_color_index(color.to_rgb())
             {
                 *out = index as u8;
             } else {
@@ -87,7 +97,7 @@ impl Palette {
             partition,
             palette: Arc::new(palette),
             alpha_threshold,
-            sub_palettes: Vec::new(),
+            sub_palettes,
         }
     }
 }
@@ -104,27 +114,33 @@ impl Palette {
         // Identify the indexes of each color in the input image.
         self.identify_color_indexes(img, workbuffer)?;
 
-        // Then find a matching palette for the tile being processed.
-        let (index, tile) = self.find_matching_palette(workbuffer)?;
-        Ok((index, Tile::new(tile)))
+        // Should we apply dithering or not ?
+        if self.sub_palettes.is_empty() {
+            // Then find a matching palette for the tile being processed.
+            let (index, tile) = self.find_matching_palette(workbuffer)?;
+            Ok((index, Tile::new(tile)))
+        } else {
+            let index = self.find_best_matching_palette(workbuffer);
+            let tile = self.apply_dithering(img, index);
+            Ok((index, Tile::new(tile)))
+        }
     }
 }
 
 /// Load a palette matrix from an image file on disk.
 /// Returns a simple 2D matrix of RGBA colors.
-fn load_matrix_from_image(path: &Path) -> ImageResult<Array2<RGBA8>> {
+fn load_matrix_from_image(path: &Path) -> ImageResult<Array2<Rgba<u8>>> {
     // load the image into a RGBA image
     let img = image::ImageReader::open(path)?.decode()?.into_rgba8();
 
     // Convert it into a 2D matrix
     let width = img.width() as usize;
     let height = img.height() as usize;
-    let mut matrix = Array2::from_elem((width, height), RGBA8::new(0, 0, 0, 0));
+    let mut matrix = Array2::from_elem((width, height), Rgba([0, 0, 0, 0]));
 
     // Fill the matrix with data
-    for (x, y, pix) in img.enumerate_pixels() {
-        let [r, g, b, a] = pix.0;
-        matrix[to_index(x, y)] = RGBA8::new(r, g, b, a);
+    for (x, y, &pix) in img.enumerate_pixels() {
+        matrix[to_index(x, y)] = pix;
     }
 
     // Return the palette
@@ -154,10 +170,9 @@ impl Palette {
         workbuffer: &mut WorkBuffer,
     ) -> Result<(), PaletteError> {
         // Assign color indexes to each pixel in the image
-        for (out, &pixel) in workbuffer.iter_mut().zip(img.pixels()) {
-            let [r, g, b, a] = pixel.0;
-            if a >= self.alpha_threshold {
-                *out = self.partition.identify_color_index(rgb::Rgb { r, g, b })?.0 as u8;
+        for (out, pixel) in workbuffer.iter_mut().zip(img.pixels()) {
+            if pixel.alpha() >= self.alpha_threshold {
+                *out = self.partition.identify_color_index(pixel.to_rgb())?.0 as u8;
             } else {
                 *out = u8::MAX;
             }
@@ -278,14 +293,41 @@ struct SubPalette {
     pub alpha_threshold: u8,
 }
 
+impl SubPalette {
+    /// process the matrix of color to generate the list of sub-palettes
+    fn create_sub_palettes(matrix: &Array2<Rgba<u8>>, alpha_threshold: u8) -> Vec<Self> {
+        // List of sub palettes to return
+        let mut out = Vec::with_capacity(matrix.ncols());
+
+        // Buffer to store colors and their assigned index
+        let mut buffer = Vec::with_capacity(matrix.nrows());
+
+        // For each palette defined, generate a color space for it
+        for palette in matrix.columns() {
+            buffer.clear();
+
+            for (index, color) in palette.iter().enumerate() {
+                buffer.push((color.to_rgb(), index));
+            }
+
+            // Generate the color space
+            out.push(Self {
+                partition: ColorSpace::load(&buffer),
+                alpha_threshold,
+            });
+        }
+
+        out
+    }
+}
+
 impl ColorMap for SubPalette {
     type Color = Rgba<u8>;
 
     /// Returns the index of the closest match of `color` in the color map.
     fn index_of(&self, color: &Self::Color) -> usize {
-        let [r, g, b, a] = color.0;
-        if a >= self.alpha_threshold
-            && let Ok((index, _)) = self.partition.identify_color_index(rgb::Rgb { r, g, b })
+        if color.alpha() >= self.alpha_threshold
+            && let Ok((index, _)) = self.partition.identify_color_index(color.to_rgb())
         {
             index
         } else {
@@ -295,22 +337,18 @@ impl ColorMap for SubPalette {
 
     /// Maps `color` to the closest color in the color map.
     fn map_color(&self, color: &mut Self::Color) {
-        let [r, g, b, a] = color.0;
-        color.0 = if a >= self.alpha_threshold
-            && let Ok((_, rgb::Rgb { r, g, b })) =
-                self.partition.identify_color_index(rgb::Rgb { r, g, b })
+        if color.alpha() >= self.alpha_threshold
+            && let Ok((_, rgb)) = self.partition.identify_color_index(color.to_rgb())
         {
-            [r, g, b, 0xff]
+            *color = rgb.to_rgba();
         } else {
-            [0, 0, 0, 0]
-        };
+            *color = Rgba([0, 0, 0, 0])
+        }
     }
 
     /// Looks up color by index in the color map.
     fn lookup(&self, index: usize) -> Option<Self::Color> {
-        self.partition
-            .by_index(index)
-            .map(|rgb::Rgb { r, g, b }| Rgba([r, g, b, 0xff]))
+        self.partition.by_index(index).map(|rgb| rgb.to_rgba())
     }
 
     /// Enable lookup

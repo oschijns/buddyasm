@@ -9,6 +9,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[features]
+default = []
+color-space = ["dep:image"]
+image = ["dep:image", "image?/default"]
 
 [dependencies]
 
@@ -24,5 +28,9 @@ toml = "1.1"
 # Handle errors
 anyhow = "1.0"
 
-# Identify colors by their RGB values
-rgb = "0.8"
+# Access RGB and RGBA types
+image = {
+    version = "0.25",
+    default-features = false,
+    optional = true,
+}
