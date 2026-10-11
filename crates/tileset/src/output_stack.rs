@@ -2,10 +2,11 @@
 pub mod animation;
 
 use crate::{
-    data::{coords::Coords, palette::PaletteError, tilemap::TileData, tileset::TileSet},
+    data::{coords::Coords, palette::PaletteUseError, tilemap::TileData, tileset::TileSet},
     input_stack::InputEntry,
     output_stack::animation::AnimationSet,
 };
+use buddyasm_common::{List, Str};
 use core::{error, fmt};
 use ndarray::{ArcArray2, Array2};
 use serde::{Deserialize, Serialize};
@@ -18,14 +19,14 @@ pub struct OutputStack {
     pub tileset: TileSet,
 
     /// Entries that have been processed from the input stack
-    pub entries: Vec<OutputEntry>,
+    pub entries: List<OutputEntry>,
 }
 
 /// Result of processing a entry from the input stack
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OutputEntry {
     /// Name of the output entry
-    pub name: String,
+    pub name: Str,
 
     /// Should the output JSON be generated?
     pub output_json: bool,
@@ -188,7 +189,7 @@ impl fmt::Display for TilesError {
 pub enum TileError {
     /// If no palette match the given tile
     #[error("Error using the palette")]
-    Palette(#[from] PaletteError),
+    Palette(#[from] PaletteUseError),
 
     /// There are too many different tiles in the provided image
     #[error("Too many distinct tiles")]

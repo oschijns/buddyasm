@@ -1,4 +1,4 @@
-use buddyasm_common::system::System;
+use buddyasm_common::{List, Str, system::System};
 use minijinja::syntax::SyntaxConfig;
 use serde::Deserialize;
 use std::{
@@ -52,15 +52,15 @@ pub struct Config {
 
     /// Sprite size parameter (if necessary)
     #[serde(default)]
-    pub sprite_size: Option<String>,
+    pub sprite_size: Option<Str>,
 
     /// Bit plane configuration (if necessary)
     #[serde(default)]
-    pub bit_plane: Option<String>,
+    pub bit_plane: Option<Str>,
 
     /// Default palette to use
     #[serde(default)]
-    pub default_palette: Option<PathBuf>,
+    pub default_palette: Option<Palette>,
 
     /// Apply dithering to the images.
     #[serde(default)]
@@ -87,40 +87,40 @@ pub struct Templating {
     /// Prefix for binary literals
     /// Defaults to `0b`
     #[serde(default = "default::prefix_bin")]
-    pub prefix_bin: String,
+    pub prefix_bin: Str,
 
     /// Prefix for octal literals
     /// Defaults to `0o`
     #[serde(default = "default::prefix_oct")]
-    pub prefix_oct: String,
+    pub prefix_oct: Str,
 
     /// Prefix for hexadecimal literals
     /// Defaults to `0x`
     #[serde(default = "default::prefix_hex")]
-    pub prefix_hex: String,
+    pub prefix_hex: Str,
 
     /// Override delimiter for template blocks
     /// Defaults to `{%%}`
     #[serde(default)]
-    pub delimiter_block: Option<[String; 2]>,
+    pub delimiter_block: Option<[Str; 2]>,
 
     /// Override delimiter for template variables
     /// Defaults to `{{}}`
     #[serde(default)]
-    pub delimiter_variable: Option<[String; 2]>,
+    pub delimiter_variable: Option<[Str; 2]>,
 
     /// Override delimiter for template comments
     /// Defaults to `{##}`
     #[serde(default)]
-    pub delimiter_comment: Option<[String; 2]>,
+    pub delimiter_comment: Option<[Str; 2]>,
 
     /// Enable line statement using the provided prefix
     #[serde(default)]
-    pub prefix_statement: Option<String>,
+    pub prefix_statement: Option<Str>,
 
     /// Enable line comment using the provided prefix
     #[serde(default)]
-    pub prefix_comment: Option<String>,
+    pub prefix_comment: Option<Str>,
 }
 
 /// Build the default config for templates
@@ -128,9 +128,9 @@ impl Default for Templating {
     fn default() -> Self {
         Self {
             includes: None,
-            prefix_bin: PREFIX_BIN.to_string(),
-            prefix_oct: PREFIX_OCT.to_string(),
-            prefix_hex: PREFIX_HEX.to_string(),
+            prefix_bin: PREFIX_BIN.to_string().into_boxed_str(),
+            prefix_oct: PREFIX_OCT.to_string().into_boxed_str(),
+            prefix_hex: PREFIX_HEX.to_string().into_boxed_str(),
             delimiter_block: None,
             delimiter_variable: None,
             delimiter_comment: None,
@@ -147,21 +147,21 @@ impl Templating {
 
         // Jinja blocks
         if let Some([a, b]) = &self.delimiter_block {
-            builder.block_delimiters(Cow::Owned(a.clone()), Cow::Owned(b.clone()));
+            builder.block_delimiters(Cow::Owned(a.to_string()), Cow::Owned(b.to_string()));
         }
         if let Some([a, b]) = &self.delimiter_variable {
-            builder.variable_delimiters(Cow::Owned(a.clone()), Cow::Owned(b.clone()));
+            builder.variable_delimiters(Cow::Owned(a.to_string()), Cow::Owned(b.to_string()));
         }
         if let Some([a, b]) = &self.delimiter_comment {
-            builder.comment_delimiters(Cow::Owned(a.clone()), Cow::Owned(b.clone()));
+            builder.comment_delimiters(Cow::Owned(a.to_string()), Cow::Owned(b.to_string()));
         }
 
         // Jinja lines
         if let Some(a) = &self.prefix_statement {
-            builder.line_statement_prefix(Cow::Owned(a.clone()));
+            builder.line_statement_prefix(Cow::Owned(a.to_string()));
         }
         if let Some(a) = &self.prefix_comment {
-            builder.line_comment_prefix(Cow::Owned(a.clone()));
+            builder.line_comment_prefix(Cow::Owned(a.to_string()));
         }
 
         builder.build()
@@ -193,7 +193,7 @@ pub struct ManifestEntry {
 
     /// Optional palette override
     #[serde(default)]
-    pub palette: Option<PathBuf>,
+    pub palette: Option<Palette>,
 
     /// Apply dithering to the image.
     #[serde(default)]
@@ -245,8 +245,20 @@ impl CharacterRange {
     }
 }
 
+/// Define a palette to use for an artwork
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum Palette {
+    /// Load the palette from an image
+    Path(PathBuf),
+
+    /// The palette is defined in the manifest directly
+    Direct(List<List<Str>>),
+}
+
 /// Set of default values
 pub mod default {
+    use buddyasm_common::Str;
 
     /// Default prefix for binary literals
     pub const PREFIX_BIN: &str = "0b";
@@ -259,19 +271,19 @@ pub mod default {
 
     /// Prefix to use for binary notation
     #[inline]
-    pub(crate) fn prefix_bin() -> String {
-        PREFIX_BIN.to_string()
+    pub(crate) fn prefix_bin() -> Str {
+        PREFIX_BIN.to_string().into_boxed_str()
     }
 
     /// Prefix to use for octal notation
     #[inline]
-    pub(crate) fn prefix_oct() -> String {
-        PREFIX_OCT.to_string()
+    pub(crate) fn prefix_oct() -> Str {
+        PREFIX_OCT.to_string().into_boxed_str()
     }
 
     /// Prefix to use for hexadecimal notation
     #[inline]
-    pub(crate) fn prefix_hex() -> String {
-        PREFIX_HEX.to_string()
+    pub(crate) fn prefix_hex() -> Str {
+        PREFIX_HEX.to_string().into_boxed_str()
     }
 }

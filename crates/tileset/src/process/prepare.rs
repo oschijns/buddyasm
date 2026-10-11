@@ -1,5 +1,9 @@
 use crate::{
-    data::{coords::ImgTileDim, mapping::CharacterMapping, palette::Palette},
+    data::{
+        coords::ImgTileDim,
+        mapping::CharacterMapping,
+        palette::{Palette, PaletteLoadError},
+    },
     input_stack::{
         Aseprite, InError, InputConfig, InputEntry, InputImage, InputStack, InputStackError,
     },
@@ -18,9 +22,13 @@ pub fn prepare(profile: Profile, manifest: &Manifest) -> Result<InputStack, Inpu
     let mut errors = Vec::with_capacity(manifest.entries.len());
 
     // Load the default palette
-    let default_palette = if let Some(path) = &manifest.config.default_palette {
-        let path = manifest.evaluate_path(path);
-        match Palette::load_from_disk(&path, ALPHA_THRESHOLD, manifest.config.use_dithering) {
+    let default_palette = if let Some(palette) = &manifest.config.default_palette {
+        match Palette::load_from_entry(
+            &manifest,
+            palette,
+            ALPHA_THRESHOLD,
+            manifest.config.use_dithering,
+        ) {
             Ok(palette) => Some(palette),
             Err(err) => {
                 // Default palette is not valid
@@ -65,7 +73,7 @@ pub fn prepare(profile: Profile, manifest: &Manifest) -> Result<InputStack, Inpu
         Ok(InputStack {
             profile,
             config,
-            stack,
+            stack: stack.into_boxed_slice(),
         })
     } else {
         Err(InputStackError { errors })
@@ -90,9 +98,13 @@ struct Context<'m> {
 impl<'m> Context<'m> {
     fn prepare_entry(&mut self, entry: &ManifestEntry) -> Result<InputEntry, InError> {
         // Check if we have a palette override for this entry
-        let palette = if let Some(path_palette) = &entry.palette {
-            let path = self.manifest.evaluate_path(path_palette);
-            match Palette::load_from_disk(&path, ALPHA_THRESHOLD, entry.use_dithering) {
+        let palette = if let Some(palette) = &entry.palette {
+            match Palette::load_from_entry(
+                &self.manifest,
+                palette,
+                ALPHA_THRESHOLD,
+                entry.use_dithering,
+            ) {
                 Ok(palette) => palette,
                 Err(err) => {
                     // Palette specified for entry is not valid
@@ -103,7 +115,7 @@ impl<'m> Context<'m> {
             palette.clone()
         } else {
             // Without a default palette, is not valid
-            return Err(InError::NoPalette);
+            return Err(InError::Palette(PaletteLoadError::Missing));
         };
 
         // Resolve the image path
@@ -111,9 +123,9 @@ impl<'m> Context<'m> {
 
         // Resolve the name of the entry (either set in the manifest or the file name)
         let name = if let Some(name) = &entry.name {
-            name.clone()
+            name.clone().into_boxed_str()
         } else if let Some(name) = img_path.file_name().and_then(|n| n.to_str()) {
-            name.to_string()
+            name.to_string().into_boxed_str()
         } else {
             return Err(InError::InvalidName);
         };

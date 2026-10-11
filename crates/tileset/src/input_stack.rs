@@ -1,9 +1,17 @@
 use crate::{
-    data::{coords::TileSize, flip::Flip, mapping::CharacterMapping, palette::Palette},
+    data::{
+        coords::TileSize,
+        flip::Flip,
+        mapping::CharacterMapping,
+        palette::{Palette, PaletteLoadError},
+    },
     profile::Profile,
 };
 use aseprite_loader::loader::{AsepriteFile, LoadSpriteError};
-use buddyasm_common::image::{DynamicImage, ImageError};
+use buddyasm_common::{
+    List, Str,
+    image::{DynamicImage, ImageError},
+};
 use core::{error, fmt};
 use ouroboros::self_referencing;
 use std::{
@@ -21,7 +29,7 @@ pub struct InputStack {
     pub config: InputConfig,
 
     /// Stack of images to process
-    pub stack: Vec<InputEntry>,
+    pub stack: List<InputEntry>,
 }
 
 /// Define a configuration to process the input images
@@ -44,7 +52,7 @@ pub struct InputEntry {
     pub path: PathBuf,
 
     /// Name of the entry (used as the output file name)
-    pub name: String,
+    pub name: Str,
 
     /// Image to process
     pub image: InputImage,
@@ -162,17 +170,13 @@ pub enum InError {
     #[error("Missing name for entry")]
     InvalidName,
 
-    /// No palette specified
-    #[error("No palette specified")]
-    NoPalette,
-
     /// Failed to load file
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
 
     /// Failed loading a palette
-    #[error("Failed to load palette at path: {0}")]
-    Palette(ImageError),
+    #[error("Palette: {0}")]
+    Palette(#[from] PaletteLoadError),
 
     /// Failed loading an image file
     #[error("Failed loading image at path: {0}")]

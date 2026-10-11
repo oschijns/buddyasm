@@ -10,6 +10,9 @@ pub mod system;
 #[cfg(feature = "color-space")]
 pub mod color_space;
 
+#[cfg(any(feature = "image", feature = "color-space"))]
+pub mod color;
+
 // re-export dependencies
 pub use anyhow;
 pub use toml;
@@ -21,3 +24,9 @@ pub mod prelude {
     // re-export
     pub use crate::manifest::{Manifest, ManifestError, load_manifest};
 }
+
+/// Non mutable owned string
+pub type Str = Box<str>;
+
+/// Non mutable list
+pub type List<T> = Box<[T]>;

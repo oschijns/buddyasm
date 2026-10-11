@@ -1,12 +1,20 @@
 //! Palette
 
-use crate::data::{
-    coords::TileSize,
-    tileset::{Pix, Tile},
+use crate::{
+    data::{
+        coords::TileSize,
+        tileset::{Pix, Tile},
+    },
+    manifest::{self, Manifest},
 };
-use buddyasm_common::image::{
-    ImageResult, Pixel, Rgba, RgbaImage,
-    imageops::{ColorMap, dither},
+use buddyasm_common::{
+    List, Str,
+    color::{ColorError, rgba_from_hex},
+    image::{
+        ImageError, ImageResult, Pixel, Rgba, RgbaImage,
+        imageops::{ColorMap, dither},
+    },
+    manifest::Manifest as _,
 };
 use buddyasm_common::{
     color_space::{ColorSpace, ColorSpaceBuilder, LockError},
@@ -33,6 +41,40 @@ pub struct Palette {
     sub_palettes: Vec<SubPalette>,
 }
 
+/// Error encountered when trying to load a palette from the manifest file
+#[derive(thiserror::Error, Debug)]
+pub enum PaletteLoadError {
+    /// No palette specified
+    #[error("No palette specified")]
+    Missing,
+
+    /// Palette is empty
+    #[error("Palette is empty")]
+    Empty,
+
+    /// Palette has a variable amout of color per rows
+    #[error("Uneven palette at {0}")]
+    Uneven(usize),
+
+    /// Parsing error
+    #[error("Failed to parse color value: {0}")]
+    ColorParsing(#[from] ColorError),
+
+    /// Failed loading a palette from a file
+    #[error("Failed to load palette at path: {0}")]
+    Image(#[from] ImageError),
+}
+
+/// Error encountered when trying to find a palette for a given tile
+#[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PaletteUseError {
+    #[error("No matching palette found")]
+    NoMatch,
+
+    #[error("{0}")]
+    Lock(#[from] LockError),
+}
+
 /// Work buffer for identifying
 pub type WorkBuffer = Array2<u8>;
 
@@ -42,24 +84,41 @@ pub fn make_workbuffer(tile_size: TileSize) -> WorkBuffer {
     Array2::zeros(tile_size.ndarray_dim())
 }
 
-/// Error encountered when trying to find a palette for a given tile
-#[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PaletteError {
-    #[error("No matching palette found")]
-    NoMatch,
-
-    #[error("{0}")]
-    Lock(#[from] LockError),
-}
-
 impl Palette {
+    /// Load from an entry in the manifest (either an image or a direct declaration)
+    pub fn load_from_entry(
+        manifest: &Manifest,
+        palette: &manifest::Palette,
+        alpha_threshold: u8,
+        use_dithering: bool,
+    ) -> Result<Self, PaletteLoadError> {
+        let matrix = match palette {
+            manifest::Palette::Path(path) => {
+                let path = manifest.evaluate_path(path);
+                load_matrix_from_image(&path)?
+            }
+            manifest::Palette::Direct(lists) => load_matrix_from_manifest(lists)?,
+        };
+        Ok(Self::from_matrix(matrix, alpha_threshold, use_dithering))
+    }
+
     /// Load a palette from a file
     pub fn load_from_disk(
         path: &Path,
         alpha_threshold: u8,
         use_dithering: bool,
-    ) -> ImageResult<Self> {
+    ) -> Result<Self, PaletteLoadError> {
         let matrix = load_matrix_from_image(path)?;
+        Ok(Self::from_matrix(matrix, alpha_threshold, use_dithering))
+    }
+
+    /// Load a palette from the manifest directly
+    pub fn load_from_manifest(
+        lists: &List<List<Str>>,
+        alpha_threshold: u8,
+        use_dithering: bool,
+    ) -> Result<Self, PaletteLoadError> {
+        let matrix = load_matrix_from_manifest(lists)?;
         Ok(Self::from_matrix(matrix, alpha_threshold, use_dithering))
     }
 
@@ -110,7 +169,7 @@ impl Palette {
         &mut self,
         img: &RgbaImage,
         workbuffer: &mut WorkBuffer,
-    ) -> Result<(usize, Tile), PaletteError> {
+    ) -> Result<(usize, Tile), PaletteUseError> {
         // Identify the indexes of each color in the input image.
         self.identify_color_indexes(img, workbuffer)?;
 
@@ -147,20 +206,34 @@ fn load_matrix_from_image(path: &Path) -> ImageResult<Array2<Rgba<u8>>> {
     Ok(matrix)
 }
 
-/*
- * TODO:
- * Processing the image is done in two steps:
- * First find closest color from palette for each RGBA value.
- * Second find palette which verify constraints of tile.
- *
- * But as soon as we have completed the first step, we loose the gradient
- * information and we cannot apply the dithering algorithm. So we should keep
- * track of the initial RGBA image so that we can apply the dithering using the
- * palette that was found. And then reidentify the color indexes.
- *
- * Since this involve a lot more processing, we can hide this feature behind a
- * flag in the manifest. Thus we would have an optional "dithering" attribute.
- */
+/// Load a palette matrix from an image file on disk.
+/// Returns a simple 2D matrix of RGBA colors.
+fn load_matrix_from_manifest(
+    lists: &List<List<Str>>,
+) -> Result<Array2<Rgba<u8>>, PaletteLoadError> {
+    // Check list is not empty
+    if lists.is_empty() {
+        Err(PaletteLoadError::Empty)
+    } else {
+        // We first must check that the palette is even
+        let expect = lists[0].len();
+        for (index, list) in lists.iter().enumerate() {
+            if list.len() != expect {
+                return Err(PaletteLoadError::Uneven(index));
+            }
+        }
+
+        // The palette is even, generate the matrix
+        let mut matrix = Array2::from_elem((lists.len(), expect), Rgba([0, 0, 0, 0]));
+        for (i, list) in lists.iter().enumerate() {
+            for (j, val) in list.iter().enumerate() {
+                matrix[Ix2(j, i)] = rgba_from_hex(val.as_ref())?;
+            }
+        }
+
+        Ok(matrix)
+    }
+}
 
 impl Palette {
     /// Given an input image, identify the indexes of the color of each pixel
@@ -168,7 +241,7 @@ impl Palette {
         &self,
         img: &RgbaImage,
         workbuffer: &mut WorkBuffer,
-    ) -> Result<(), PaletteError> {
+    ) -> Result<(), PaletteUseError> {
         // Assign color indexes to each pixel in the image
         for (out, pixel) in workbuffer.iter_mut().zip(img.pixels()) {
             if pixel.alpha() >= self.alpha_threshold {
@@ -185,7 +258,7 @@ impl Palette {
     fn find_matching_palette(
         &self,
         workbuffer: &WorkBuffer,
-    ) -> Result<(usize, Array2<u8>), PaletteError> {
+    ) -> Result<(usize, Array2<u8>), PaletteUseError> {
         // Allocate a tile to store the palette index for each pixel.
         // We cannot use the input matrix directly as we will successively
         // try each palette while writing into the tile.
@@ -217,7 +290,7 @@ impl Palette {
             return Ok((pal_index, tile));
         }
 
-        Err(PaletteError::NoMatch)
+        Err(PaletteUseError::NoMatch)
     }
 
     /// Once each pixel has been remapped to its index,

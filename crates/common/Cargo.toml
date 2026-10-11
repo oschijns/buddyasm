@@ -11,8 +11,8 @@ license.workspace = true
 
 [features]
 default = []
-color-space = ["dep:image"]
-image = ["dep:image", "image?/default"]
+color-space = ["dep:image", "dep:regex"]
+image = ["dep:image", "dep:regex", "image?/default"]
 
 [dependencies]
 
@@ -34,3 +34,6 @@ image = {
     default-features = false,
     optional = true,
 }
+
+# Parse a string to extract a color value
+regex = { version = "1.13", optional = true }

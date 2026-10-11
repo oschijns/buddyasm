@@ -49,7 +49,7 @@ pub fn process_stack(input: &InputStack) -> Result<OutputStack, OutputStackError
     if errors.is_empty() {
         Ok(OutputStack {
             tileset: builder.complete(),
-            entries: out_entries,
+            entries: out_entries.into_boxed_slice(),
         })
     } else {
         Err(OutputStackError { errors })

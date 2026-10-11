@@ -94,7 +94,7 @@ fn main() -> Result<(), anyhow::Error> {
     for entry in &output.entries {
         // Generate the output JSON if requested
         if entry.output_json {
-            let mut path_file = out_path.join(&entry.name);
+            let mut path_file = out_path.join(entry.name.as_ref());
             path_file.set_extension("json");
             let mut file = File::create(path_file)?;
             serde_json::to_writer_pretty(&mut file, &entry.image)?;
@@ -105,7 +105,7 @@ fn main() -> Result<(), anyhow::Error> {
             && let Some(temp_name) = template.file_name().and_then(|t| t.to_str())
         {
             // Construct the output file
-            let mut path_file = out_path.join(&entry.name);
+            let mut path_file = out_path.join(entry.name.as_ref());
             if let Some(ext) = template.extension() {
                 path_file.set_extension(ext);
             }

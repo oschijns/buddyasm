@@ -34,9 +34,9 @@ pub fn setup(
         )
     } else {
         (
-            PREFIX_BIN.to_string(),
-            PREFIX_OCT.to_string(),
-            PREFIX_HEX.to_string(),
+            PREFIX_BIN.to_string().into_boxed_str(),
+            PREFIX_OCT.to_string().into_boxed_str(),
+            PREFIX_HEX.to_string().into_boxed_str(),
         )
     };
 
